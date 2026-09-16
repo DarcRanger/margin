@@ -2,12 +2,13 @@ name: Track Statistics
 
 on:
   schedule:
-    # Run daily at 03:00 UTC (after GitHub compiles daily traffic)
-    - cron: "0 3 * * *"
+    # Run daily every morning at 12:00 UTC (8:00 AM EDT)
+    - cron: "0 12 * * *"
   workflow_dispatch:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   track-stats:
@@ -31,6 +32,8 @@ jobs:
           python scripts/track_stats.py
 
       - name: Commit and push changes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -40,4 +43,6 @@ jobs:
           else
             git commit -m "chore(stats): update download statistics"
             git push
+            echo "Triggering site deployment to publish updated stats..."
+            gh workflow run deploy.yml --ref main || echo "Failed to trigger deploy workflow"
           fi
