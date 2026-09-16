@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -40,6 +41,11 @@ jobs:
           cp index.html deploy/
           cp -r assets deploy/
           cp -r docs/.vitepress/dist deploy/docs
+          if [ -f stats/history.json ]; then
+            cp stats/history.json deploy/stats.json
+            mkdir -p deploy/stats
+            cp stats/history.json deploy/stats/history.json
+          fi
           touch deploy/.nojekyll
 
       - name: Deploy to GitHub Pages
