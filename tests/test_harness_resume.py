@@ -2,6 +2,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from api.routers import assist
 from api.services.file_storage import FileStorageService
@@ -14,6 +15,18 @@ def _subseq(argv, seq):
 
 
 class TestResumeArgv(unittest.TestCase):
+
+    def setUp(self):
+        # These tests verify argv construction, not whether every supported
+        # third-party agent CLI happens to be installed on the test machine.
+        self.which_patcher = patch(
+            "api.routers.assist.harness_env.which_harness",
+            side_effect=lambda command: command,
+        )
+        self.which_patcher.start()
+
+    def tearDown(self):
+        self.which_patcher.stop()
 
     def test_opencode_resume_flag(self):
         argv = assist._resolve_harness_argv(
@@ -121,7 +134,11 @@ class TestHarnessSessionMap(unittest.TestCase):
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
-        self.storage = FileStorageService(base_dir=self.tmp.name)
+        self.storage = FileStorageService(
+            base_dir=self.tmp.name,
+            config_dir=Path(self.tmp.name) / "config",
+            workspace_dir=Path(self.tmp.name) / "sample-workspace",
+        )
 
     def tearDown(self):
         self.tmp.cleanup()

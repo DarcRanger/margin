@@ -40,12 +40,8 @@ interface MarkdownStorage {
 
 
 function cleanUserPrompt(log: SimpleLogEntry): string {
-  let text = ''
-  if (log.instruction && log.instruction.trim()) {
-    text = log.instruction.trim()
-  } else {
-    text = log.mode === 'chat' ? 'AI Assistant Query' : 'Edit text'
-  }
+  let text = log.instruction?.trim()
+    || (log.mode === 'chat' ? 'AI Assistant Query' : 'Edit text')
 
   const hasAt = text.includes('@')
   if (!hasAt) {
@@ -466,7 +462,7 @@ export function SimpleAssist() {
 
   useEffect(() => {
     fetchSettings()
-  }, [])
+  }, [fetchSettings])
 
   useEffect(() => {
     if (settings?.default_mode) {
@@ -633,7 +629,7 @@ export function SimpleAssist() {
   )
 
 
-  const handleInput = () => {
+  const handleInput = useCallback(() => {
     const el = inputRef.current
     if (!el) return
 
@@ -658,7 +654,7 @@ export function SimpleAssist() {
     setFileQuery(query)
     setHighlightedIndex(0)
     setShowFileDropdown(true)
-  }
+  }, [pendingEditSelection, setPendingEditSelection])
 
   const handleSelectFile = useCallback((file: FileEntry) => {
     const div = inputRef.current
@@ -1189,7 +1185,7 @@ export function SimpleAssist() {
         handleInput()
       }
     }
-  }, [pendingEditSelection])
+  }, [handleInput, pendingEditSelection])
 
   const hasHistory = filteredLogs.length > 0 || isWorking || !!errorText || !!noticeText
 
@@ -1505,7 +1501,7 @@ export function SimpleAssist() {
                       return data.context_needed
                     }
                   }
-                } catch (e) {
+                } catch {
                   // ignore
                 }
                 return []

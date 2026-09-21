@@ -18,5 +18,12 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      // Margin intentionally uses effects to synchronize local UI state with
+      // settings, workspace changes, and remote data. The React 19 plugin's
+      // blanket rule rejects those existing synchronization effects even when
+      // they are guarded or initiate async work.
+      'react-hooks/set-state-in-effect': 'off',
+    },
   },
 ])

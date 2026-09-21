@@ -15,4 +15,5 @@ settings.json
 .worktrees/
 worktrees/
 .venv/
+.margin-test/
 .opencode

@@ -9,7 +9,10 @@ from datetime import datetime
 
 try:
     from platformdirs import user_config_dir
-    _CONFIG_DIR = Path(user_config_dir("slm-writing-engine", appauthor=False))
+    _CONFIG_DIR = Path(
+        os.environ.get("MARGIN_CONFIG_DIR")
+        or user_config_dir("slm-writing-engine", appauthor=False)
+    )
     _PLATFORMDIRS_AVAILABLE = True
 except ImportError:
     warnings.warn(
@@ -29,21 +32,34 @@ def _posix_rel(path: Path, base: Path) -> str:
 
 
 class FileStorageService:
-    def __init__(self, base_dir: str = "."):
+    def __init__(
+        self,
+        base_dir: str = ".",
+        config_dir: str | Path | None = None,
+        workspace_dir: str | Path | None = None,
+    ):
         self.base_dir = Path(base_dir)
+        self._workspace_override = Path(workspace_dir) if workspace_dir is not None else None
         # Settings live in a platform-appropriate config directory
-        _CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-        self.settings_path = _CONFIG_DIR / "settings.json"
+        resolved_config_dir = Path(config_dir) if config_dir is not None else _CONFIG_DIR
+        resolved_config_dir.mkdir(parents=True, exist_ok=True)
+        self.settings_path = resolved_config_dir / "settings.json"
         self.workspace_dir = self.base_dir / "sample-workspace"
         self.outputs_dir = self.workspace_dir / "outputs"
         self.load_settings()
 
     def load_settings(self):
-        # Default back to sample-workspace first
-        self.workspace_dir = self.base_dir / "sample-workspace"
+        # Automated checks can force an isolated workspace before global
+        # storage is constructed. In normal use, default to sample-workspace.
+        workspace_override = self._workspace_override or os.environ.get("MARGIN_WORKSPACE_DIR")
+        self.workspace_dir = (
+            Path(workspace_override)
+            if workspace_override
+            else self.base_dir / "sample-workspace"
+        )
         self.outputs_dir = self.workspace_dir / "outputs"
 
-        if self.settings_path.exists():
+        if self.settings_path.exists() and not workspace_override:
             try:
                 with open(self.settings_path, "r", encoding="utf-8") as f:
                     settings = json.load(f)
