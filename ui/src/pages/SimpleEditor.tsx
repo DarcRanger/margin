@@ -96,14 +96,14 @@ export default function SimpleEditor() {
     }
   }, [])
 
-  const handleSave = useCallback(async () => {
-    if (!currentFilePath) return
+  const handleSave = useCallback(async (): Promise<boolean> => {
+    if (!currentFilePath) return true
 
     const initialStore = useEditorStore.getState()
     if (initialStore.pilot) {
       if (currentFilePath !== initialStore.pilot.pilot_path) {
         initialStore.setPilotError('Pilot is active; finish it before changing another file.')
-        return
+        return false
       }
       const fileContent = initialStore.aiPendingEdit
         ? initialStore.aiPendingEdit.previousContent
@@ -125,11 +125,12 @@ export default function SimpleEditor() {
         store.updateFileContent(currentFilePath, fileContent)
         store.markFileClean(currentFilePath)
         store.setPilotError('')
+        return true
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Pilot save failed'
         useEditorStore.getState().setPilotError(message)
+        return false
       }
-      return
     }
 
     if (currentFilePath.startsWith('prompts/')) {
@@ -142,13 +143,17 @@ export default function SimpleEditor() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ content: fileContent })
         })
-        if (res.ok) {
-          markFileClean(currentFilePath)
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          throw new Error(data.detail || `Save failed (${res.status})`)
         }
+        markFileClean(currentFilePath)
+        return true
       } catch (err) {
         console.error("Failed to save prompt file:", err)
+        window.alert(`Failed to save file: ${err instanceof Error ? err.message : 'Unknown error'}`)
+        return false
       }
-      return
     }
 
     try {
@@ -159,11 +164,16 @@ export default function SimpleEditor() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: fileContent })
       })
-      if (res.ok) {
-        markFileClean(currentFilePath)
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.detail || `Save failed (${res.status})`)
       }
+      markFileClean(currentFilePath)
+      return true
     } catch (err) {
       console.error("Failed to save file:", err)
+      window.alert(`Failed to save file: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      return false
     }
   }, [currentFilePath, markFileClean])
 

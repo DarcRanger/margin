@@ -40,7 +40,7 @@ async function openPilot(state: PilotState) {
   store.setPilotError('')
 }
 
-export function PilotPanel({ onSave }: { onSave: () => Promise<void> }) {
+export function PilotPanel({ onSave }: { onSave: () => Promise<boolean> }) {
   const pilot = useEditorStore(state => state.pilot)
   const pilotError = useEditorStore(state => state.pilotError)
   const currentFilePath = useEditorStore(state => state.currentFilePath)

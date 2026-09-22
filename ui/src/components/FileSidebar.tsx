@@ -102,7 +102,7 @@ export function FileSidebar({
   aiPanelOpen,
   setAiPanelOpen,
 }: {
-  onSaveCurrentFile?: () => Promise<void>
+  onSaveCurrentFile?: () => Promise<boolean>
   filesPanelOpen?: boolean
   setFilesPanelOpen?: (open: boolean) => void
   aiPanelOpen?: boolean
@@ -229,7 +229,8 @@ export function FileSidebar({
     }
 
     if (onSaveCurrentFile) {
-      await onSaveCurrentFile()
+      const saved = await onSaveCurrentFile()
+      if (!saved) return
     }
     const updatedStore = useEditorStore.getState()
     const { currentFilePath, content } = updatedStore

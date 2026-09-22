@@ -6,6 +6,60 @@ const sourceText = '# Fixture Chapter\n\nA generic sentence for browser acceptan
 const editedText = ' Browser edit'
 const exportText = ' Browser export'
 
+test('file switching saves pending edits and stops on a failed write', async ({ page }) => {
+  const workspace = process.env.MARGIN_BROWSER_WORKSPACE
+  if (!workspace) throw new Error('MARGIN_BROWSER_WORKSPACE is required')
+
+  const first = join(workspace, 'chapters', 'Lifecycle_First.md')
+  const second = join(workspace, 'chapters', 'Lifecycle_Second.md')
+  const editor = page.locator('.ProseMirror')
+
+  await page.goto('/')
+  await page.locator('[title="chapters/Lifecycle_First.md"]').click()
+  await expect(editor).toContainText('A first lifecycle sentence')
+  await editor.click()
+  await page.keyboard.press(process.platform === 'darwin' ? 'Meta+End' : 'Control+End')
+  await page.keyboard.type(' Saved before switch')
+
+  await page.locator('[title="chapters/Lifecycle_Second.md"]').click()
+  await expect(editor).toContainText('A second lifecycle sentence')
+  expect(readFileSync(first, 'utf8')).toContain('Saved before switch')
+
+  await editor.click()
+  await page.keyboard.press(process.platform === 'darwin' ? 'Meta+End' : 'Control+End')
+  await page.keyboard.type(' Pending after failure')
+
+  await page.route('**/api/workspace/files/**', async route => {
+    if (route.request().method() === 'PUT') {
+      await route.fulfill({
+        status: 400,
+        contentType: 'application/json',
+        body: JSON.stringify({ detail: 'simulated write failure' }),
+      })
+      return
+    }
+    await route.continue()
+  })
+  let dialogMessage = ''
+  await Promise.all([
+    page.waitForEvent('dialog').then(async dialog => {
+      dialogMessage = dialog.message()
+      await dialog.accept()
+    }),
+    page.locator('[title="chapters/Lifecycle_First.md"]').click(),
+  ])
+  expect(dialogMessage).toContain('simulated write failure')
+
+  await expect(page.getByText('Source chapter: chapters/Lifecycle_Second.md')).toBeVisible()
+  await expect(editor).toContainText('Pending after failure')
+  expect(readFileSync(second, 'utf8')).not.toContain('Pending after failure')
+
+  await page.unroute('**/api/workspace/files/**')
+  await page.locator('[title="chapters/Lifecycle_First.md"]').click()
+  await expect(editor).toContainText('Saved before switch')
+  expect(readFileSync(second, 'utf8')).toContain('Pending after failure')
+})
+
 test('protected Pilot lifecycle preserves source and recovers from a visible conflict', async ({ page }) => {
   const workspace = process.env.MARGIN_BROWSER_WORKSPACE
   if (!workspace) throw new Error('MARGIN_BROWSER_WORKSPACE is required')

@@ -29,11 +29,15 @@
       using only a disposable workspace.
 - [x] Add a Windows CI gate for fresh start, API/UI availability, complete
       process-tree shutdown, no orphan listeners, and immediate relaunch.
+- [x] Complete isolated file-lifecycle coverage for create, list/read, save,
+      rename, delete, failed-write preservation, path containment, and safe
+      switching with pending edits.
 
 ## Next
 
-- [ ] Work through the approved functional-completeness backlog one item at a
-      time with Builder/Verifier repair loops.
+- [ ] Complete AI/harness coverage for chat/edit permissions, stop/retry,
+      provider and planner failures, diff review, resume, and no-write failure
+      handling.
 
 ## Later: Lore Control
 

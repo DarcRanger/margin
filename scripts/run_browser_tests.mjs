@@ -19,6 +19,16 @@ writeFileSync(
   '# Fixture Chapter\n\nA generic sentence for browser acceptance.\n',
   'utf8',
 )
+writeFileSync(
+  join(workspace, 'chapters', 'Lifecycle_First.md'),
+  '# Lifecycle First\n\nA first lifecycle sentence.\n',
+  'utf8',
+)
+writeFileSync(
+  join(workspace, 'chapters', 'Lifecycle_Second.md'),
+  '# Lifecycle Second\n\nA second lifecycle sentence.\n',
+  'utf8',
+)
 
 function availablePort() {
   return new Promise((resolvePort, reject) => {
