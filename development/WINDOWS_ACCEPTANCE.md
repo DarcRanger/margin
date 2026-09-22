@@ -1,5 +1,8 @@
 # Windows Acceptance — Development Harness v1
 
+Status: `PASS` — 6/6 checks passed on the Windows laptop on 2026-09-21
+from an isolated clone.
+
 Run this once after pulling the feature branch on the Windows laptop.
 
 ## Setup

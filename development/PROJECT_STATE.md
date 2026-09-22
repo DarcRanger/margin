@@ -1,6 +1,6 @@
 # Project State
 
-Last updated: 2026-09-21
+Last updated: 2026-09-22
 Branch: `feat/development-supervisor-v1`
 Milestone: Margin Development Harness v1
 
@@ -16,9 +16,12 @@ Milestone: Margin Development Harness v1
   regression coverage proves linked manuscript data is not selected.
 - `PARTIAL`: Functional coverage is concentrated in harness resume/parsing,
   context extraction, and statistics; end-to-end feature coverage is limited.
-- `MISSING`: A verified functional-completeness inventory for Margin.
+- `WORKING`: The read-only functional-completeness inventory and ordered backlog
+  are recorded in `development/FEATURE_INVENTORY.md`.
 - `MISSING`: Automated browser/UI acceptance tests.
-- `MISSING`: Windows hands-on acceptance of the new one-command test gate.
+- `WORKING`: Windows hands-on acceptance passed 6/6 from an isolated clone on
+  Joe's Windows laptop; the live Margin installation and linked writing data
+  were not selected for the test.
 
 ## Completed task
 
@@ -33,12 +36,17 @@ Development Harness v1 automated foundation:
 
 Automated verification: `PASS` (6/6 checks, 43 tests).
 
+## Completed platform gate
+
+Windows hands-on acceptance: `PASS` (6/6 checks) on 2026-09-21.
+
 ## Active task
 
-Run the Windows hands-on acceptance in `development/WINDOWS_ACCEPTANCE.md`.
+Recover the installed DARC Pilot source without modifying the working
+installation or linked writing data. Compare it with the isolated GitHub clone,
+capture only reviewed source changes, and verify direct editing and protected
+pilot behavior before importing new product ideas.
 
-## Next gate
-
-Joe runs `margin-test.bat` on Windows. Once that passes,
-the supervisor performs a read-only feature inventory and proposes the ordered
-Margin Functional Complete backlog before new product functionality is added.
+External GitHub and Reddit candidates are classified in
+`development/EXTERNAL_IDEA_REVIEW.md`. No candidate is approved for wholesale
+installation or allowed to bypass the functional-complete baseline.

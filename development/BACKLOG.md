@@ -3,16 +3,22 @@
 ## Completed
 
 - [x] Complete and independently verify Development Harness v1 automated gate.
+- [x] Run the Development Harness v1 Windows acceptance checklist (6/6 PASS).
+- [x] Inventory current Margin surfaces and propose the ordered functional-
+      completeness backlog.
+- [x] Review external GitHub/Reddit ideas and record staged adoption decisions.
 
 ## In progress
 
-- [ ] Run the Development Harness v1 Windows acceptance checklist.
+- [ ] Recover the installed DARC Pilot source with a read-only comparison
+      against the isolated GitHub clone.
 
 ## Next
 
-- [ ] Inventory every current Margin screen, API route, service, prompt, and
-      launch path as `WORKING`, `PARTIAL`, `MISSING`, or `BROKEN`.
-- [ ] Convert the approved Margin behavior into acceptance criteria.
+- [ ] Write the protected-pilot source manifest and acceptance contract,
+      including direct editing in the main chapter editor.
+- [ ] Verify no relevant source, UI control, prompt, or asset remains only in
+      the installed working copy.
 - [ ] Add API smoke/integration coverage using temporary workspaces.
 - [ ] Add automated browser tests for startup, chapter loading, editing,
       protected save, diff review, and error recovery.

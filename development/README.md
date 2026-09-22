@@ -15,6 +15,10 @@ The operating loop is:
 The loop controls software development only. It can detect or report manuscript
 and lore conflicts, but it cannot decide canon or rewrite source material.
 
+External repositories and Reddit ideas are triaged in
+[`EXTERNAL_IDEA_REVIEW.md`](EXTERNAL_IDEA_REVIEW.md). Inclusion there records a
+candidate or decision; it does not authorize a dependency or feature by itself.
+
 ## Local setup
 
 ```text
