@@ -77,6 +77,45 @@ jobs:
       - name: Lint
         run: npm run lint
 
+  # ── Real-browser Pilot lifecycle ─────────────────────────────────────────
+  browser-pilot:
+    name: "Browser Pilot lifecycle (${{ matrix.os }})"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Install application dependencies
+        run: |
+          pip install -r requirements-dev.txt
+          npm ci --prefix ui
+
+      - name: Install Chromium and Linux system dependencies
+        if: runner.os == 'Linux'
+        run: npx --prefix ui playwright install --with-deps chromium
+
+      - name: Install Chromium
+        if: runner.os != 'Linux'
+        run: npx --prefix ui playwright install chromium
+
+      - name: Run isolated browser acceptance
+        run: npm run test:browser --prefix ui
+
   # ── Path-safety unit tests ────────────────────────────────────────────────
   # Lightweight cross-platform sanity check for the path-handling helpers.
   path-safety:

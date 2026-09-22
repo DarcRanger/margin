@@ -24,10 +24,25 @@ candidate or decision; it does not authorize a dependency or feature by itself.
 ```text
 python -m pip install -r requirements-dev.txt
 npm ci --prefix ui
+npx --prefix ui playwright install chromium
 python scripts/margin_test.py --full
 ```
 
 On Windows, `margin-test.bat` or `./margin-test.ps1` runs the same full gate.
+The full gate includes a named `Browser Pilot lifecycle` check. It starts the
+actual API and Vite UI on available local ports, generates a temporary generic
+Markdown workspace, runs Chromium, verifies source bytes, and removes the
+temporary workspace afterward. No linked workspace or user manuscript is read.
+
+To run only that check on Windows, macOS, or Linux:
+
+```text
+npm run test:browser --prefix ui
+```
+
+If Chromium is not installed, run `npx --prefix ui playwright install chromium`.
+Linux CI uses `--with-deps`; the other supported runners use the standard
+Chromium installation.
 
 ## Status vocabulary
 

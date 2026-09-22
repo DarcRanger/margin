@@ -134,6 +134,7 @@ def run_suite(full: bool) -> list[CheckResult]:
         results.extend(
             [
                 _run("Frontend tests", [npm, "run", "test"], UI_DIR),
+                _run("Browser Pilot lifecycle", [npm, "run", "test:browser"], UI_DIR),
                 _run("Frontend build", [npm, "run", "build"], UI_DIR),
                 _run("Frontend lint", [npm, "run", "lint"], UI_DIR),
             ]

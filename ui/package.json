@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint . --max-warnings=0",
     "test": "node --test tests/*.test.mjs",
+    "test:browser": "node ../scripts/run_browser_tests.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -28,6 +29,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.63.0",
     "@types/node": "^24.12.3",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
@@ -43,9 +45,9 @@
   "optionalDependencies": {
     "@rolldown/binding-darwin-arm64": "^1.0.2",
     "@rolldown/binding-darwin-x64": "^1.0.2",
-    "@rolldown/binding-linux-x64-gnu": "^1.0.2",
     "@rolldown/binding-linux-arm64-gnu": "^1.0.2",
-    "@rolldown/binding-win32-x64-msvc": "^1.0.2",
-    "@rolldown/binding-win32-arm64-msvc": "^1.0.2"
+    "@rolldown/binding-linux-x64-gnu": "^1.0.2",
+    "@rolldown/binding-win32-arm64-msvc": "^1.0.2",
+    "@rolldown/binding-win32-x64-msvc": "^1.0.2"
   }
 }

@@ -21,11 +21,17 @@
 
 ## In progress
 
-- [ ] Add automated browser tests for startup, chapter loading, editing,
-      protected save, diff review, lifecycle actions, and error recovery.
+- [ ] Add automated real-browser coverage for startup, chapter loading,
+      protected direct save, conflict recovery, reset, export, finish, finished-
+      run resume prevention, source eligibility guidance, and byte-preserved
+      source protection in an isolated temporary workspace. Implementation,
+      test discovery, API/UI startup, build, lint, and quick checks pass; local
+      Chromium execution awaits a browser runtime because this environment's
+      Playwright CDN downloads were truncated.
 
 ## Next
 
+- [ ] Complete the real-browser execution locally or in cross-platform CI.
 - [ ] Create the minimal Windows manual-acceptance checklist.
 - [ ] Work through the approved functional-completeness backlog one item at a
       time with Builder/Verifier repair loops.
