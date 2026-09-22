@@ -14,15 +14,18 @@
 - [x] Add Pilot API smoke/integration coverage using a temporary workspace.
 - [x] Prevent an exported finished Pilot run from resuming; preserve unfinished
       resume behavior and advance the next run number.
+- [x] Complete Windows Pilot lifecycle acceptance on 2026-09-22, including
+      start, direct edit/save, reset, export, finish, resume, and source checks.
+- [x] Keep Pilot artifacts visible for audit while disabling Pilot start for
+      files at or under `PILOT/` and showing corrective source guidance.
 
 ## In progress
 
-- [ ] Run the minimal Pilot acceptance checklist from the clean Windows clone.
+- [ ] Add automated browser tests for startup, chapter loading, editing,
+      protected save, diff review, lifecycle actions, and error recovery.
 
 ## Next
 
-- [ ] Add automated browser tests for startup, chapter loading, editing,
-      protected save, diff review, and error recovery.
 - [ ] Create the minimal Windows manual-acceptance checklist.
 - [ ] Work through the approved functional-completeness backlog one item at a
       time with Builder/Verifier repair loops.

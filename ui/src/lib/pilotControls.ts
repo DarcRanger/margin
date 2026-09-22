@@ -5,6 +5,14 @@ export interface PilotControlState {
 }
 
 export const UNVERIFIED_PILOT_GUIDANCE = 'Edit the main text field and save, or review a Margin AI change, to verify this pilot.'
+export const INELIGIBLE_PILOT_SOURCE_GUIDANCE = 'Select a Markdown chapter outside PILOT to start a protected pilot.'
+
+export function isEligiblePilotSource(path: string | null): boolean {
+  if (!path) return false
+  const normalized = path.replaceAll('\\', '/').replace(/^\.\//, '')
+  const lower = normalized.toLowerCase()
+  return lower.endsWith('.md') && lower !== 'pilot' && !lower.startsWith('pilot/')
+}
 
 export function pilotStatusGuidance(pilot: PilotControlState | null): string | null {
   return pilot?.status === 'NOT VERIFIED' ? UNVERIFIED_PILOT_GUIDANCE : null
@@ -16,9 +24,9 @@ export function exportButtonAppearance(disabled: boolean): string {
     : 'bg-green-600 text-white hover:bg-green-700'
 }
 
-export function pilotControls(pilot: PilotControlState | null, hasSource: boolean, busy: boolean) {
+export function pilotControls(pilot: PilotControlState | null, sourceEligible: boolean, busy: boolean) {
   return {
-    startDisabled: busy || !!pilot || !hasSource,
+    startDisabled: busy || !!pilot || !sourceEligible,
     saveDisabled: busy || !pilot,
     resetDisabled: busy || !pilot,
     exportDisabled: busy || !pilot || pilot.status !== 'PASS' || pilot.decision !== 'ACCEPT' || !!pilot.exported,

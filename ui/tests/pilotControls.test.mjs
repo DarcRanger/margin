@@ -1,6 +1,20 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createPilotActionGate, finishPilotSession, pilotBlocksNavigation, pilotControls, pilotStatusGuidance, UNVERIFIED_PILOT_GUIDANCE } from '../src/lib/pilotControls.ts'
+import { createPilotActionGate, finishPilotSession, isEligiblePilotSource, pilotBlocksNavigation, pilotControls, pilotStatusGuidance, UNVERIFIED_PILOT_GUIDANCE } from '../src/lib/pilotControls.ts'
+
+test('only Markdown sources outside PILOT are eligible', () => {
+  assert.equal(isEligiblePilotSource('MANUSCRIPT/Chapter_01.md'), true)
+  assert.equal(isEligiblePilotSource('PILOT'), false)
+  assert.equal(isEligiblePilotSource('PILOT/Chapter_01_Margin_Pilot/Chapter_01.md'), false)
+  assert.equal(isEligiblePilotSource('pilot\\run\\chapter.md'), false)
+  assert.equal(isEligiblePilotSource('MANUSCRIPT/notes.txt'), false)
+  assert.equal(isEligiblePilotSource(null), false)
+})
+
+test('ineligible source keeps protected pilot start disabled', () => {
+  assert.equal(pilotControls(null, false, false).startDisabled, true)
+  assert.equal(pilotControls(null, true, false).startDisabled, false)
+})
 
 test('active pilot enables direct save but gates export and finish', () => {
   const active = { status: 'NOT VERIFIED', decision: null, exported: false }

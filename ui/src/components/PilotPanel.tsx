@@ -4,6 +4,8 @@ import {
   createPilotActionGate,
   exportButtonAppearance,
   finishPilotSession,
+  INELIGIBLE_PILOT_SOURCE_GUIDANCE,
+  isEligiblePilotSource,
   pilotControls,
   pilotStatusGuidance,
 } from '../lib/pilotControls'
@@ -46,13 +48,17 @@ export function PilotPanel({ onSave }: { onSave: () => Promise<void> }) {
   const [busy, setBusy] = useState(false)
   const actionGate = useRef(createPilotActionGate())
   const sourcePath = pilot?.source_path || currentFilePath
-  const controls = pilotControls(pilot, !!sourcePath, busy)
+  const sourceEligible = pilot ? true : isEligiblePilotSource(currentFilePath)
+  const controls = pilotControls(pilot, sourceEligible, busy)
   const statusGuidance = pilotStatusGuidance(pilot)
+  const sourceGuidance = !pilot && currentFilePath && !sourceEligible
+    ? INELIGIBLE_PILOT_SOURCE_GUIDANCE
+    : null
 
   useEffect(() => {
-    if (pilot || !currentFilePath || currentFilePath.startsWith('PILOT/')) return
+    if (pilot || !isEligiblePilotSource(currentFilePath)) return
     let active = true
-    fetch(`${API_BASE}/api/workspace/pilot/status?source_path=${encodeURIComponent(currentFilePath)}`)
+    fetch(`${API_BASE}/api/workspace/pilot/status?source_path=${encodeURIComponent(currentFilePath!)}`)
       .then(response => response.ok ? response.json() : null)
       .then(state => {
         if (active && state) openPilot(state as PilotState).catch(err => setError(String(err)))
@@ -131,6 +137,7 @@ export function PilotPanel({ onSave }: { onSave: () => Promise<void> }) {
       <button className="rounded-md border border-[var(--border)] px-3 py-2 font-semibold text-[var(--text)] hover:bg-[var(--bg-hover)] disabled:cursor-not-allowed disabled:opacity-45" disabled={controls.finishDisabled} onClick={finish}>Finish Pilot</button>
     </div>
     {statusGuidance && <div className="mt-2 text-amber-600">{statusGuidance}</div>}
+    {sourceGuidance && <div className="mt-2 text-amber-600">{sourceGuidance}</div>}
     {pilot && <div className="text-amber-600 mt-2">Edit directly in the main text field. Save writes only to the disposable pilot; the source remains protected.</div>}
     {error && <div role="alert" className="text-red-600 mt-2">{error}</div>}
     {pilotError && <div role="alert" className="text-red-600 mt-2">{pilotError}</div>}
