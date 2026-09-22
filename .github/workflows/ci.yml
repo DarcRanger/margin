@@ -28,7 +28,7 @@ jobs:
       - name: Generate non-breaking lockfile fixes
         working-directory: ui
         run: |
-          npm ci
+          npm install --package-lock-only
           npm audit fix --package-lock-only
 
       - name: Upload remediated lockfile
