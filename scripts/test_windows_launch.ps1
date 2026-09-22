@@ -27,6 +27,10 @@ function Wait-ForExit([System.Diagnostics.Process]$Process) {
     if (-not $Process.WaitForExit(30000)) {
         throw "Launcher did not exit after the shutdown request"
     }
+    # Windows PowerShell can report HasExited before the redirected process
+    # handle has populated ExitCode. An untimed wait and refresh synchronize it.
+    $Process.WaitForExit()
+    $Process.Refresh()
     if ($Process.ExitCode -ne 0) {
         throw "Launcher exited with code $($Process.ExitCode)"
     }
