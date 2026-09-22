@@ -31,8 +31,12 @@ function Wait-ForExit([System.Diagnostics.Process]$Process) {
     # handle has populated ExitCode. An untimed wait and refresh synchronize it.
     $Process.WaitForExit()
     $Process.Refresh()
-    if ($Process.ExitCode -ne 0) {
-        throw "Launcher exited with code $($Process.ExitCode)"
+    $exitCode = $Process.ExitCode
+    # Some Windows PowerShell hosts leave ExitCode blank for redirected
+    # Start-Process instances. A reported nonzero value is still a failure;
+    # clean exit plus the no-orphan assertion is the portable success proof.
+    if ($null -ne $exitCode -and "$exitCode" -ne "" -and $exitCode -ne 0) {
+        throw "Launcher exited with code $exitCode"
     }
 }
 
