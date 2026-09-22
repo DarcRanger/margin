@@ -9,6 +9,7 @@
     "lint": "eslint . --max-warnings=0",
     "test": "node --test tests/*.test.mjs",
     "test:browser": "node ../scripts/run_browser_tests.mjs",
+    "audit:ci": "npm audit --audit-level=high",
     "preview": "vite preview"
   },
   "dependencies": {

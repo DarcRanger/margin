@@ -1,6 +1,8 @@
 import { Extension } from '@tiptap/core'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
+import { resolveHarnessReview } from '../../lib/applyHarnessResult'
+import { useEditorStore } from '../../stores/editorStore'
 
 export interface AiDiffHighlightOptions {
   class: string
@@ -100,43 +102,36 @@ export const AiDiffHighlightExtension = Extension.create<AiDiffHighlightOptions>
                   </button>
                 `
 
-                // Dynamic import avoids circular dependency issues during plugin eval
-                import('../../stores/editorStore').then(({ useEditorStore }) => {
-                  widget.querySelector('.accept-btn')?.addEventListener('click', (e) => {
-                    e.preventDefault()
-                    const state = useEditorStore.getState()
-                    if (state.aiPendingEdit?.harness) {
-                      // Harness run: persist merged doc (AI + preserved user edits)
-                      import('../../lib/applyHarnessResult').then(({ resolveHarnessReview }) => {
-                        resolveHarnessReview(true).catch((err) => console.error('Failed to accept harness changes:', err))
-                      })
-                      return
-                    }
-                    state.editor?.commands.clearAiHighlight()
-                    state.setAiPendingEdit(null)
-                  })
+                widget.querySelector('.accept-btn')?.addEventListener('click', (e) => {
+                  e.preventDefault()
+                  const state = useEditorStore.getState()
+                  if (state.aiPendingEdit?.harness) {
+                    // Harness run: persist merged doc (AI + preserved user edits)
+                    resolveHarnessReview(true).catch((err) => console.error('Failed to accept harness changes:', err))
+                    return
+                  }
+                  state.editor?.commands.clearAiHighlight()
+                  state.setAiPendingEdit(null)
+                })
 
-                  widget.querySelector('.reject-btn')?.addEventListener('click', (e) => {
-                    e.preventDefault()
-                    const state = useEditorStore.getState()
-                    if (state.aiPendingEdit?.harness) {
-                      // Harness run: remove AI changes, keep user changes (incl. disk)
-                      import('../../lib/applyHarnessResult').then(({ resolveHarnessReview }) => {
-                        resolveHarnessReview(false).catch((err) => console.error('Failed to reject harness changes:', err))
-                      })
-                      return
+                widget.querySelector('.reject-btn')?.addEventListener('click', (e) => {
+                  e.preventDefault()
+                  const state = useEditorStore.getState()
+                  if (state.aiPendingEdit?.harness) {
+                    // Harness run: remove AI changes, keep user changes (incl. disk)
+                    resolveHarnessReview(false).catch((err) => console.error('Failed to reject harness changes:', err))
+                    return
+                  }
+                  const previous = state.aiPendingEdit?.previousContent
+                  state.editor?.commands.clearAiHighlight()
+                  if (previous !== undefined) {
+                    state.editor?.commands.setContent(previous)
+                    state.setContent(previous)
+                    if (state.currentFilePath) {
+                      state.updateFileContent(state.currentFilePath, previous)
                     }
-                    const previous = state.aiPendingEdit?.previousContent
-                    state.editor?.commands.clearAiHighlight()
-                    if (previous !== undefined) {
-                      state.editor?.commands.setContent(previous)
-                      state.setContent(previous)
-                      if (state.currentFilePath) {
-                        state.updateFileContent(state.currentFilePath, previous)
-                      }
-                    }
-                    state.setAiPendingEdit(null)
-                  })
+                  }
+                  state.setAiPendingEdit(null)
                 })
 
                 // side: -1 inserts the widget BEFORE the character at `from`,

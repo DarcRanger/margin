@@ -47,6 +47,36 @@ def _run(
     return CheckResult(name, status, elapsed, detail)
 
 
+def _run_with_forbidden_output(
+    name: str,
+    command: Sequence[str],
+    forbidden: Sequence[str],
+    cwd: Path = ROOT,
+    env: dict[str, str] | None = None,
+) -> CheckResult:
+    """Run a command and fail when known build warnings reappear."""
+    started = time.monotonic()
+    print(f"\n[{name}] {' '.join(command)}", flush=True)
+    completed = subprocess.run(
+        command,
+        cwd=cwd,
+        env=env,
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+    )
+    output = completed.stdout or ""
+    print(output, end="" if output.endswith("\n") else "\n", flush=True)
+    elapsed = time.monotonic() - started
+    if completed.returncode != 0:
+        return CheckResult(name, "FAIL", elapsed, f"exit code {completed.returncode}")
+    found = [marker for marker in forbidden if marker in output]
+    if found:
+        return CheckResult(name, "FAIL", elapsed, "warning: " + ", ".join(found))
+    return CheckResult(name, "PASS", elapsed)
+
+
 def _dependency_check() -> CheckResult:
     started = time.monotonic()
     required = ("fastapi", "httpx", "pytest", "sqlmodel", "uvicorn")
@@ -135,7 +165,12 @@ def run_suite(full: bool) -> list[CheckResult]:
             [
                 _run("Frontend tests", [npm, "run", "test"], UI_DIR),
                 _run("Browser Pilot lifecycle", [npm, "run", "test:browser"], UI_DIR),
-                _run("Frontend build", [npm, "run", "build"], UI_DIR),
+                _run_with_forbidden_output(
+                    "Frontend build",
+                    [npm, "run", "build"],
+                    ("INEFFECTIVE_DYNAMIC_IMPORT", "Some chunks are larger than"),
+                    UI_DIR,
+                ),
                 _run("Frontend lint", [npm, "run", "lint"], UI_DIR),
             ]
         )
