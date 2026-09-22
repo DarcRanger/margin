@@ -12,8 +12,8 @@ if (-not (Test-Path ".venv")) {
 }
 
 & ".venv\Scripts\Activate.ps1"
-pip install -q --upgrade pip
-pip install -q -r requirements.txt
+python -m pip install -q --upgrade pip
+python -m pip install -q -r requirements.txt
 
 # ── Node environment ────────────────────────────────────────────────────────
 if (-not (Test-Path "ui\node_modules")) {

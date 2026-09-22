@@ -6,6 +6,7 @@ import { useEditorStore } from '../stores/editorStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import { SettingsModal } from '../components/SettingsModal'
 import { API_BASE } from '../lib/api'
+import { PilotPanel } from '../components/PilotPanel'
 
 
 const PANEL_MIN_WIDTH = 260
@@ -97,6 +98,39 @@ export default function SimpleEditor() {
 
   const handleSave = useCallback(async () => {
     if (!currentFilePath) return
+
+    const initialStore = useEditorStore.getState()
+    if (initialStore.pilot) {
+      if (currentFilePath !== initialStore.pilot.pilot_path) {
+        initialStore.setPilotError('Pilot is active; finish it before changing another file.')
+        return
+      }
+      const fileContent = initialStore.aiPendingEdit
+        ? initialStore.aiPendingEdit.previousContent
+        : initialStore.content
+      try {
+        const response = await fetch(`${API_BASE}/api/workspace/pilot/save`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            source_path: initialStore.pilot.source_path,
+            content: fileContent,
+            expected_pilot_hash: initialStore.pilot.pilot_hash,
+          }),
+        })
+        const data = await response.json()
+        if (!response.ok) throw new Error(data.detail || `Pilot save failed (${response.status})`)
+        const store = useEditorStore.getState()
+        store.setPilot(data)
+        store.updateFileContent(currentFilePath, fileContent)
+        store.markFileClean(currentFilePath)
+        store.setPilotError('')
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Pilot save failed'
+        useEditorStore.getState().setPilotError(message)
+      }
+      return
+    }
 
     if (currentFilePath.startsWith('prompts/')) {
       try {
@@ -230,6 +264,7 @@ export default function SimpleEditor() {
 
         {/* Right: Scrolling Editor area */}
         <div ref={editorContainerRef} className="editor-scroll-container flex-1 p-8 overflow-y-auto min-w-0 relative">
+          <PilotPanel onSave={handleSave} />
           <NovelEditor showInlinePopup={true} />
         </div>
 

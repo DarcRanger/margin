@@ -764,6 +764,7 @@ export function SimpleAssist() {
         ref_files: currentRefFiles.map(f => ({ name: f.name, path: f.path })),
         available_files: openedFiles.map(f => ({ name: f.name, path: f.path })),
         active_filename: activeFilename,
+        active_path: currentFilePath,
       }
 
       if (localHasSelection) {

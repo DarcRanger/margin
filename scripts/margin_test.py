@@ -133,6 +133,7 @@ def run_suite(full: bool) -> list[CheckResult]:
     if results[-1].status == "PASS":
         results.extend(
             [
+                _run("Frontend tests", [npm, "run", "test"], UI_DIR),
                 _run("Frontend build", [npm, "run", "build"], UI_DIR),
                 _run("Frontend lint", [npm, "run", "lint"], UI_DIR),
             ]

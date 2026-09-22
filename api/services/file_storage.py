@@ -211,7 +211,19 @@ class FileStorageService:
         full_path = self._safe_resolve(path)
         if not full_path.exists() or not full_path.is_file():
             raise FileNotFoundError(f"File not found: {path}")
-        return full_path.read_text(encoding="utf-8")
+        with full_path.open("r", encoding="utf-8", newline="") as file:
+            return file.read()
+
+    def _guard_pilot_write(self, target_path: Path) -> None:
+        """Keep ordinary file endpoints away from protected Pilot artifacts."""
+        from api.services.pilot_mode import PilotConflict, PilotService
+
+        relative = _posix_rel(target_path.resolve(), self.workspace_dir.resolve())
+        service = PilotService(self.workspace_dir)
+        if service.protected_source(relative) or service.active_pilot(relative):
+            raise PilotConflict(
+                "Active Pilot files must be changed through the Pilot controls"
+            )
 
     def create_input_file(self, folder: str, name: str, content: str = "") -> Dict[str, str]:
         folder = folder.strip("/")
@@ -246,7 +258,9 @@ class FileStorageService:
         target_path = self._safe_resolve(path)
         if not target_path.exists():
             raise FileNotFoundError(f"File not found: {path}")
-        target_path.write_text(content or "", encoding="utf-8")
+        self._guard_pilot_write(target_path)
+        with target_path.open("w", encoding="utf-8", newline="") as file:
+            file.write(content or "")
         return True
 
     def delete_input_file(self, path: str) -> bool:
@@ -255,6 +269,7 @@ class FileStorageService:
             raise FileNotFoundError(f"File not found: {path}")
         if full_path.suffix.lower() != ".md":
             raise ValueError("Only markdown files can be deleted via this endpoint")
+        self._guard_pilot_write(full_path)
         full_path.unlink()
         return True
 
@@ -264,6 +279,7 @@ class FileStorageService:
             raise FileNotFoundError(f"File not found: {path}")
         if old_path.suffix.lower() != ".md":
             raise ValueError("Only markdown files can be renamed via this endpoint")
+        self._guard_pilot_write(old_path)
 
         new_name = (new_name or "").strip()
         if not new_name:

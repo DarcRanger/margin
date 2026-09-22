@@ -1,4 +1,7 @@
+import hashlib
 import json
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -47,8 +50,17 @@ class TestResumeArgv(unittest.TestCase):
     def test_codex_resume_subcommand(self):
         argv = assist._resolve_harness_argv(
             "codex", "do it", "/tmp/w", mode="edit", resume_id="tid-1")
-        self.assertTrue(_subseq(argv, ["exec", "resume", "tid-1"]))
-        self.assertEqual(argv[-1], "do it")
+        self.assertEqual(argv[1:], [
+            "-C", "/tmp/w", "-s", "workspace-write", "exec", "resume",
+            "tid-1", "--json", "--skip-git-repo-check", "--", "-",
+        ])
+
+    def test_codex_fresh_command_keeps_exec_options(self):
+        argv = assist._resolve_harness_argv("codex", "do it", "/tmp/w")
+        self.assertEqual(argv[1:], [
+            "exec", "--json", "--skip-git-repo-check", "-C", "/tmp/w",
+            "-s", "workspace-write", "--", "-",
+        ])
 
     def test_agy_resume_flag_before_print(self):
         argv = assist._resolve_harness_argv(
@@ -60,6 +72,70 @@ class TestResumeArgv(unittest.TestCase):
     def test_unknown_harness_raises(self):
         with self.assertRaises(ValueError):
             assist._resolve_harness_argv("nope", "do it", "/tmp/w")
+
+
+class TestCodexStdin(unittest.IsolatedAsyncioTestCase):
+    async def _turn(self, resume_id=None, failure=False):
+        chapter = "--- chapter\r\n" + "Prose — café 'quoted' 🚀\n" * 2200
+        prompt = chapter + "\n\n--- USER MESSAGE ---\nReview the chapter."
+        self.assertGreater(len(prompt), 40000)
+        expected_digest = hashlib.sha256(prompt.encode("utf-8")).hexdigest()
+        real_popen = subprocess.Popen
+        seen_argv = []
+
+        def launch(argv, **kwargs):
+            seen_argv.append(argv)
+            self.assertEqual(kwargs["stdin"], subprocess.PIPE)
+            script = (
+                "import sys,hashlib,json; data=sys.stdin.buffer.read(); "
+                "print(json.dumps({'type':'item.completed','item':"
+                "{'type':'agent_message','text':hashlib.sha256(data).hexdigest()}}))"
+            )
+            if failure:
+                script = (
+                    "import sys; sys.stdin.buffer.read(); "
+                    "sys.stderr.write('fatal: smoke diagnostic'); sys.exit(2)"
+                )
+            return real_popen([sys.executable, "-c", script], **kwargs)
+
+        with tempfile.TemporaryDirectory() as workspace, \
+                patch.object(assist.storage, "workspace_dir", Path(workspace)), \
+                patch.object(assist.storage, "get_settings", return_value={}), \
+                patch.object(assist.storage, "get_harness_session", return_value=resume_id), \
+                patch.object(assist.storage, "clear_harness_session"), \
+                patch.object(assist.harness_env, "which_harness", return_value="codex"), \
+                patch.object(assist, "_compose_chat_prompts", return_value=(chapter, "Review the chapter.", {})), \
+                patch.object(assist, "_workspace_index_line", return_value=""), \
+                patch.object(assist, "_log_simple_assist"), \
+                patch.object(assist.subprocess, "Popen", side_effect=launch):
+            response = await assist.simple_assist(assist.SimpleAssistRequest(
+                message="Review the chapter.", harness="codex", mode="chat", session_id="test",
+            ))
+            events = [json.loads(event["data"]) async for event in response.body_iterator]
+
+        argv = seen_argv[0]
+        self.assertEqual(argv[-2:], ["--", "-"])
+        self.assertNotIn(prompt, argv)
+        self.assertLess(len(" ".join(argv)), 1000)
+        if resume_id:
+            self.assertLess(argv.index("-C"), argv.index("exec"))
+        if failure:
+            error = next(event["detail"] for event in events if event["status"] == "error")
+            self.assertIn("fatal: smoke diagnostic", error)
+        else:
+            self.assertIn(
+                expected_digest,
+                "".join(event.get("chunk", "") for event in events),
+            )
+
+    async def test_fresh_long_prompt_reaches_stdin_intact(self):
+        await self._turn()
+
+    async def test_resumed_long_prompt_reaches_stdin_intact(self):
+        await self._turn(resume_id="tid-1")
+
+    async def test_non_json_stderr_survives_failure_without_newline(self):
+        await self._turn(failure=True)
 
 
 class TestSessionCapture(unittest.TestCase):

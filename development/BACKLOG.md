@@ -7,19 +7,18 @@
 - [x] Inventory current Margin surfaces and propose the ordered functional-
       completeness backlog.
 - [x] Review external GitHub/Reddit ideas and record staged adoption decisions.
+- [x] Recover and integrate the installed DARC Pilot source without touching
+      linked writing data.
+- [x] Write the protected-pilot source manifest and direct-editor contract.
+- [x] Verify the recovered source against the full automated quality gate.
+- [x] Add Pilot API smoke/integration coverage using a temporary workspace.
 
 ## In progress
 
-- [ ] Recover the installed DARC Pilot source with a read-only comparison
-      against the isolated GitHub clone.
+- [ ] Run the minimal Pilot acceptance checklist from the clean Windows clone.
 
 ## Next
 
-- [ ] Write the protected-pilot source manifest and acceptance contract,
-      including direct editing in the main chapter editor.
-- [ ] Verify no relevant source, UI control, prompt, or asset remains only in
-      the installed working copy.
-- [ ] Add API smoke/integration coverage using temporary workspaces.
 - [ ] Add automated browser tests for startup, chapter loading, editing,
       protected save, diff review, and error recovery.
 - [ ] Create the minimal Windows manual-acceptance checklist.

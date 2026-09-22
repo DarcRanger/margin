@@ -8,8 +8,8 @@ Milestone: Margin Development Harness v1
 
 - `WORKING`: Margin launches on the user's Windows machine.
 - `WORKING`: More than one chapter has completed the protected pilot workflow.
-- `WORKING`: The full quality gate passes: 43 backend tests, backend imports,
-  frontend build, and zero-warning frontend lint.
+- `WORKING`: The full quality gate passes: 56 backend tests plus 2 subtests,
+  5 frontend unit tests, backend imports, frontend build, and zero-warning lint.
 - `WORKING`: Cross-platform GitHub Actions are fail-closed on Windows, macOS,
   and Linux and explicitly install development/test dependencies.
 - `WORKING`: Automated checks force disposable config and workspace paths;
@@ -40,13 +40,22 @@ Automated verification: `PASS` (6/6 checks, 43 tests).
 
 Windows hands-on acceptance: `PASS` (6/6 checks) on 2026-09-21.
 
+## Completed recovery
+
+The installed DARC Pilot source was recovered without modifying the working
+installation or linked writing data. Reviewed Pilot and Codex reliability
+changes were integrated while newer GitHub isolation and lint fixes were
+preserved. Direct editing in the main chapter editor now saves only to the
+disposable Pilot copy. The source contract and file inventory are recorded in
+`development/PILOT_SOURCE_MANIFEST.md`.
+
+Automated verification: `PASS` (7/7 checks).
+
 ## Active task
 
-Recover the installed DARC Pilot source without modifying the working
-installation or linked writing data. Compare it with the isolated GitHub clone,
-capture only reviewed source changes, and verify direct editing and protected
-pilot behavior before importing new product ideas.
+Run the minimal clean-clone Windows acceptance checklist for Pilot start,
+direct edit/save, reset, export, finish, relaunch, and source-integrity proof.
 
 External GitHub and Reddit candidates are classified in
-`development/EXTERNAL_IDEA_REVIEW.md`. No candidate is approved for wholesale
-installation or allowed to bypass the functional-complete baseline.
+`development/EXTERNAL_IDEA_REVIEW.md`. External product ideas remain gated until
+the Windows Pilot acceptance run and baseline freeze are complete.

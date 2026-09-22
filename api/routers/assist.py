@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
 
 from api.services.file_storage import storage
+from api.services.pilot_mode import PilotConflict, PilotService
 from api.services.assist_helpers import extract_anchor_context, _load_simple_prompt
 import llm
 import config
@@ -45,6 +46,9 @@ def _resolve_harness_argv(harness_id: str, prompt: str, cwd: str, mode: str = "e
             f"{desc['name']} not found — install it or set a custom path in Settings > Harnesses"
         )
     argv = [exe]
+    codex_resume = harness_id == "codex" and bool(resume_id)
+    if codex_resume:
+        argv += [desc["workspace_flag"], cwd, *desc["extra_args"]]
     if desc.get("subcommand"):
         argv.append(desc["subcommand"])
     if resume_id:
@@ -63,11 +67,13 @@ def _resolve_harness_argv(harness_id: str, prompt: str, cwd: str, mode: str = "e
         argv += [desc["agent_flag"], agent]
     if desc.get("format_args"):
         argv += list(desc["format_args"])
+    if harness_id == "codex":
+        argv.append("--skip-git-repo-check")
     # Workspace scope BEFORE the prompt: agy's --print swallows the next
     # arg, so the prompt must always be last.
-    if desc.get("workspace_flag"):
+    if desc.get("workspace_flag") and not codex_resume:
         argv += [desc["workspace_flag"], cwd]
-    if desc.get("extra_args"):
+    if desc.get("extra_args") and not codex_resume:
         argv += list(desc["extra_args"])
     if desc.get("prompt_flag"):
         argv += [desc["prompt_flag"], prompt]
@@ -75,7 +81,7 @@ def _resolve_harness_argv(harness_id: str, prompt: str, cwd: str, mode: str = "e
         # "--" forces everything after to parse as the positional message.
         # Without it, a prompt starting with "-" (e.g. our "--- MARGIN
         # DIRECTIVE ---" header) is parsed as flags and the CLI dumps help.
-        argv += ["--", prompt]
+        argv += ["--", "-" if harness_id == "codex" else prompt]
     if desc.get("cwd_flag"):
         argv += [desc["cwd_flag"], cwd]
     return argv
@@ -396,13 +402,13 @@ def _parse_codex_line(line: str, state: dict):
 
 
 def _run_harness_sync(argv: list, cwd: str, stop_event: threading.Event, queue: asyncio.Queue,
-                       loop: asyncio.AbstractEventLoop):
+                       loop: asyncio.AbstractEventLoop, stdin_text: Optional[str] = None):
     try:
         proc = subprocess.Popen(
             argv,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            stdin=subprocess.DEVNULL,
+            stdin=subprocess.PIPE if stdin_text is not None else subprocess.DEVNULL,
             cwd=cwd,
             env=harness_env.normalized_env(),
             bufsize=0,
@@ -423,6 +429,24 @@ def _run_harness_sync(argv: list, cwd: str, stop_event: threading.Event, queue: 
     watcher = threading.Thread(target=_watch_stop, daemon=True)
     watcher.start()
 
+    def _feed_stdin():
+        try:
+            remaining = memoryview(stdin_text.encode("utf-8"))
+            while remaining:
+                written = proc.stdin.write(remaining)
+                if not written:
+                    raise BrokenPipeError("Harness stdin closed before prompt was sent")
+                remaining = remaining[written:]
+        except (BrokenPipeError, OSError):
+            pass
+        finally:
+            proc.stdin.close()
+
+    feeder = None
+    if stdin_text is not None:
+        feeder = threading.Thread(target=_feed_stdin, daemon=True)
+        feeder.start()
+
     try:
         while True:
             if stop_event.is_set():
@@ -433,6 +457,8 @@ def _run_harness_sync(argv: list, cwd: str, stop_event: threading.Event, queue: 
             text = _strip_ansi(chunk.decode("utf-8", errors="replace"))
             loop.call_soon_threadsafe(queue.put_nowait, ("chunk", text))
         proc.wait()
+        if feeder is not None:
+            feeder.join()
         loop.call_soon_threadsafe(queue.put_nowait, ("done", proc.returncode))
     except Exception as e:
         loop.call_soon_threadsafe(queue.put_nowait, ("error", e))
@@ -444,9 +470,10 @@ def _run_harness_sync(argv: list, cwd: str, stop_event: threading.Event, queue: 
             pass
 
 
-async def run_harness(argv: list, cwd: str, stop_event: threading.Event, queue: asyncio.Queue):
+async def run_harness(argv: list, cwd: str, stop_event: threading.Event, queue: asyncio.Queue,
+                      stdin_text: Optional[str] = None):
     loop = asyncio.get_running_loop()
-    await asyncio.to_thread(_run_harness_sync, argv, cwd, stop_event, queue, loop)
+    await asyncio.to_thread(_run_harness_sync, argv, cwd, stop_event, queue, loop, stdin_text)
 
 def _resolve_simple_assist_client() -> llm.LLMClient:
     """Return an LLMClient configured with the active endpoint from settings,
@@ -555,6 +582,7 @@ class SimpleAssistRequest(BaseModel):
     ref_files: Optional[List[Dict[str, Any]]] = None
     available_files: List[Dict[str, str]] = Field(default_factory=list)
     active_filename: Optional[str] = None
+    active_path: Optional[str] = None
     skip_planner: bool = False
     harness: Optional[str] = "api" 
 
@@ -964,14 +992,28 @@ async def simple_assist(payload: SimpleAssistRequest):
                 yield {"data": json.dumps({"status": "generating"})}
                 # Resolve the active file first and flush the editor buffer
                 # so the agent operates on fresh file state.
-                active_path = None
-                if payload.active_filename:
+                active_path = payload.active_path
+                if not active_path and payload.active_filename:
                     active_path = next(
                         (f.get("path") for f in (payload.available_files or [])
                          if f.get("name") == payload.active_filename),
                         None,
                     )
-                    if active_path:
+                pilot_state = None
+                if active_path:
+                    try:
+                        pilot_service = PilotService(storage.workspace_dir)
+                        pilot_state = pilot_service.active_pilot(active_path)
+                    except PilotConflict as exc:
+                        yield {"data": json.dumps({"status": "error", "detail": str(exc)})}
+                        return
+                    if not pilot_state:
+                        if pilot_service.protected_source(active_path):
+                            yield {"data": json.dumps({
+                                "status": "error",
+                                "detail": "Pilot Mode protects the source chapter; open its disposable pilot copy",
+                            })}
+                            return
                         try:
                             storage.update_input_file(active_path, payload.content)
                         except Exception as e:
@@ -990,7 +1032,15 @@ async def simple_assist(payload: SimpleAssistRequest):
                     })}
                     user_parts = []
                     if active_path:
-                        user_parts.append(f"ACTIVE_FILE: {active_path}")
+                        user_parts.append(
+                            f"ACTIVE_FILE: {Path(active_path).name if pilot_state else active_path}"
+                        )
+                    if pilot_state:
+                        user_parts.append(
+                            "PROTECTED PILOT: Edit only "
+                            f"{active_path}. Do not write the source "
+                            f"{pilot_state['source_path']}. Margin verifies the source hash after review."
+                        )
                     if payload.selected_text:
                         user_parts.append(f"SELECTED_TEXT:\n{payload.selected_text}")
                     elif payload.cursor_paragraph_text:
@@ -1032,7 +1082,11 @@ async def simple_assist(payload: SimpleAssistRequest):
                 # Absolute: harnesses scope their writable workspace to the
                 # path we pass (agy --add-dir treats a missing/broken dir as
                 # "no writable workspace" and edits fall back to its scratch).
-                workspace = str(storage.workspace_dir.resolve())
+                workspace = (
+                    str(Path(pilot_state["pilot"]).parent.resolve())
+                    if pilot_state
+                    else str(storage.workspace_dir.resolve())
+                )
                 argv = _resolve_harness_argv(
                     payload.harness, harness_prompt, workspace, mode=mode,
                     resume_id=resume_id,
@@ -1041,8 +1095,15 @@ async def simple_assist(payload: SimpleAssistRequest):
                 hqueue: asyncio.Queue = asyncio.Queue()
                 stream = HARNESS_DESCRIPTORS[payload.harness].get("stream")
                 codex_state: dict = {}
-                loop.create_task(run_harness(argv, workspace, stop_event, hqueue))
+                loop.create_task(run_harness(
+                    argv,
+                    workspace,
+                    stop_event,
+                    hqueue,
+                    stdin_text=harness_prompt if payload.harness == "codex" else None,
+                ))
                 full_harness_output = ""
+                raw_output_tail = ""
                 full_harness_thinking = ""
                 harness_returncode = 0
                 harness_session_id: Optional[str] = None
@@ -1058,6 +1119,7 @@ async def simple_assist(payload: SimpleAssistRequest):
                 while True:
                     msg_type, val = await hqueue.get()
                     if msg_type == "chunk":
+                        raw_output_tail = (raw_output_tail + _strip_ansi(val))[-8192:]
                         if not stream:
                             full_harness_output += _strip_ansi(val)
                             yield {"data": json.dumps({"status": "chunk", "chunk": _strip_ansi(val)})}
@@ -1112,7 +1174,9 @@ async def simple_assist(payload: SimpleAssistRequest):
                     # drop the mapping so the retry starts a fresh session.
                     if resume_id and payload.session_id:
                         storage.clear_harness_session(payload.session_id, payload.harness)
-                    tail_lines = full_harness_output.strip().splitlines()[-5:]
+                    tail_lines = (
+                        full_harness_output.strip() or raw_output_tail.strip()
+                    ).splitlines()[-5:]
                     tail = "\n".join(tail_lines).strip() or "no output captured"
                     raise RuntimeError(
                         f"{HARNESS_DESCRIPTORS[payload.harness]['name']} exited with code {harness_returncode}. Last output:\n{tail}"
