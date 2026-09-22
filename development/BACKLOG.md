@@ -18,20 +18,15 @@
       start, direct edit/save, reset, export, finish, resume, and source checks.
 - [x] Keep Pilot artifacts visible for audit while disabling Pilot start for
       files at or under `PILOT/` and showing corrective source guidance.
-
-## In progress
-
-- [ ] Add automated real-browser coverage for startup, chapter loading,
+- [x] Add automated real-browser coverage for startup, chapter loading,
       protected direct save, conflict recovery, reset, export, finish, finished-
-      run resume prevention, source eligibility guidance, and byte-preserved
-      source protection in an isolated temporary workspace. Implementation,
-      test discovery, API/UI startup, build, lint, and quick checks pass; local
-      Chromium execution awaits a browser runtime because this environment's
-      Playwright CDN downloads were truncated.
+      run resume prevention, source eligibility guidance, exact approved export
+      bytes, and byte-preserved source protection in an isolated temporary
+      workspace. Real Chromium execution passed in CI on Windows, macOS, and
+      Linux on 2026-09-22.
 
 ## Next
 
-- [ ] Complete the real-browser execution locally or in cross-platform CI.
 - [ ] Create the minimal Windows manual-acceptance checklist.
 - [ ] Work through the approved functional-completeness backlog one item at a
       time with Builder/Verifier repair loops.
