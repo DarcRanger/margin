@@ -71,3 +71,23 @@ def test_pilot_direct_edit_api_protects_source_and_exports(monkeypatch, tmp_path
     )
     assert exported.status_code == 200
     assert source.read_bytes() == original
+
+    finished = client.post(
+        "/api/workspace/pilot/finish",
+        json={"source_path": state["source_path"]},
+    )
+    assert finished.status_code == 200
+    status = client.get(
+        "/api/workspace/pilot/status",
+        params={"source_path": state["source_path"]},
+    )
+    assert status.status_code == 200
+    assert status.json() is None
+
+    restarted = client.post(
+        "/api/workspace/pilot/start",
+        json={"source_path": state["source_path"]},
+    )
+    assert restarted.status_code == 200
+    assert restarted.json()["run"] == 2
+    assert source.read_bytes() == original

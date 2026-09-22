@@ -9,7 +9,7 @@ import {
 } from '../lib/pilotControls'
 import { useEditorStore, type PilotState } from '../stores/editorStore'
 
-async function action(path: string, body: object): Promise<PilotState | { path: string; sha256: string }> {
+async function action(path: 'start' | 'reset' | 'export' | 'finish', body: object): Promise<PilotState | { path: string; sha256: string }> {
   const response = await fetch(`${API_BASE}/api/workspace/pilot/${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -99,6 +99,21 @@ export function PilotPanel({ onSave }: { onSave: () => Promise<void> }) {
     }
   }
 
+  const finish = async () => {
+    if (controls.finishDisabled || !sourcePath || !actionGate.current.begin()) return
+    setBusy(true)
+    setError('')
+    try {
+      await action('finish', { source_path: sourcePath })
+      finishPilotSession(useEditorStore.getState(), false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Pilot finish failed')
+    } finally {
+      actionGate.current.end()
+      setBusy(false)
+    }
+  }
+
   return <section className="mb-4 rounded-lg border border-[var(--border)] p-3 text-xs bg-[var(--bg)]">
     <div className="font-semibold mb-2">DARC Pilot Mode</div>
     <div>Source chapter: {pilot?.source_path || currentFilePath || 'Select a Markdown chapter'}</div>
@@ -113,7 +128,7 @@ export function PilotPanel({ onSave }: { onSave: () => Promise<void> }) {
       <button className="rounded-md bg-blue-600 px-3 py-2 font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-45" disabled={controls.saveDisabled} onClick={save}>Save Pilot Edits</button>
       <button className="rounded-md border-2 border-amber-600 px-3 py-2 font-semibold text-amber-700 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-45" disabled={controls.resetDisabled} onClick={() => run('reset')}>Reset Pilot</button>
       <button className={`rounded-md px-3 py-2 font-bold ${exportButtonAppearance(controls.exportDisabled)}`} disabled={controls.exportDisabled} onClick={() => run('export')}>{controls.exportLabel}</button>
-      <button className="rounded-md border border-[var(--border)] px-3 py-2 font-semibold text-[var(--text)] hover:bg-[var(--bg-hover)] disabled:cursor-not-allowed disabled:opacity-45" disabled={controls.finishDisabled} onClick={() => finishPilotSession(useEditorStore.getState(), busy)}>Finish Pilot</button>
+      <button className="rounded-md border border-[var(--border)] px-3 py-2 font-semibold text-[var(--text)] hover:bg-[var(--bg-hover)] disabled:cursor-not-allowed disabled:opacity-45" disabled={controls.finishDisabled} onClick={finish}>Finish Pilot</button>
     </div>
     {statusGuidance && <div className="mt-2 text-amber-600">{statusGuidance}</div>}
     {pilot && <div className="text-amber-600 mt-2">Edit directly in the main text field. Save writes only to the disposable pilot; the source remains protected.</div>}

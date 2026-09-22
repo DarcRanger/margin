@@ -12,6 +12,8 @@
 - [x] Write the protected-pilot source manifest and direct-editor contract.
 - [x] Verify the recovered source against the full automated quality gate.
 - [x] Add Pilot API smoke/integration coverage using a temporary workspace.
+- [x] Prevent an exported finished Pilot run from resuming; preserve unfinished
+      resume behavior and advance the next run number.
 
 ## In progress
 

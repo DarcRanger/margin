@@ -46,6 +46,35 @@ class PilotModeTests(unittest.TestCase):
         report = exported.with_name("RUN_001_RESULT.txt").read_text(encoding="utf-8")
         self.assertIn("Verification: MANUAL EDIT", report)
 
+    def test_finish_does_not_resume_and_next_start_increments_run(self):
+        state, copy = self.start()
+        changed = self.original.decode().replace("Chapter One", "Finished Pilot")
+        saved = self.pilot.save_manual(
+            state["source_path"], changed=changed,
+            expected_pilot_hash=state["pilot_hash"],
+        )
+        self.pilot.export(state["source_path"])
+        finished = self.pilot.finish(state["source_path"])
+
+        self.assertTrue(finished["finished"])
+        self.assertIsNone(self.pilot.status(state["source_path"]))
+        self.assertIsNone(self.pilot.active_pilot(state["pilot_path"]))
+        self.assertFalse(self.pilot.protected_source(state["source_path"]))
+        self.assertEqual(self.source.read_bytes(), self.original)
+
+        next_state = self.pilot.start(state["source_path"])
+        self.assertEqual(next_state["run"], 2)
+        self.assertFalse(next_state["finished"])
+        self.assertEqual(copy.read_bytes(), self.original)
+        self.assertEqual(self.source.read_bytes(), self.original)
+
+    def test_unfinished_run_still_resumes_and_cannot_be_restarted(self):
+        state, _ = self.start()
+        self.assertEqual(self.pilot.status(state["source_path"])["run"], 1)
+        self.assertEqual(self.pilot.active_pilot(state["pilot_path"])["run"], 1)
+        with self.assertRaisesRegex(PilotConflict, "Pilot exists"):
+            self.pilot.start(state["source_path"])
+
     def test_manual_save_refuses_stale_state_and_external_source_change(self):
         state, copy = self.start()
         with self.assertRaisesRegex(PilotConflict, "stale"):

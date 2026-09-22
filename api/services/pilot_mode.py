@@ -115,7 +115,7 @@ class PilotService:
     def active_pilot(self, relative: str):
         for manifest in self.root.glob("*/manifest.json"):
             state = json.loads(manifest.read_text(encoding="utf-8"))
-            if state["pilot_path"] == relative:
+            if state["pilot_path"] == relative and not state.get("finished", False):
                 self._check(state, pilot_hash=state["pilot_hash"])
                 return state
         return None
@@ -123,30 +123,31 @@ class PilotService:
     def protected_source(self, relative: str) -> bool:
         for manifest in self.root.glob("*/manifest.json"):
             state = json.loads(manifest.read_text(encoding="utf-8"))
-            if state["source_path"] == relative:
+            if state["source_path"] == relative and not state.get("finished", False):
                 return True
         return False
 
     def start(self, relative: str):
         source = self._resolve_source(relative)
-        if self._read(source):
+        previous = self._read(source)
+        if previous and not previous.get("finished", False):
             raise PilotConflict("Pilot exists; use Reset Pilot for another run")
         folder = self._manifest_path(source).parent
-        if folder.exists():
+        if folder.exists() and not previous:
             raise PilotConflict(
                 "Pilot directory exists without a manifest; refusing overwrite"
             )
         raw = source.read_bytes()
         text = raw.decode("utf-8")
         pilot = folder / source.name
-        folder.mkdir(parents=True)
+        folder.mkdir(parents=True, exist_ok=bool(previous))
         pilot.write_bytes(raw)
         state = {
             "source": str(source),
             "pilot": str(pilot),
             "source_path": relative,
             "pilot_path": pilot.relative_to(self.workspace).as_posix(),
-            "run": 1,
+            "run": previous["run"] + 1 if previous else 1,
             "baseline": digest(raw),
             "pilot_hash": digest(raw),
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -164,13 +165,32 @@ class PilotService:
             "decision": None,
             "verification": None,
             "exported": False,
+            "finished": False,
         }
         self._write(state)
         return state
 
     def status(self, relative: str):
         source = self._resolve_source(relative)
-        return self._read(source)
+        state = self._read(source)
+        return None if state and state.get("finished", False) else state
+
+    def finish(self, relative: str):
+        source = self._resolve_source(relative)
+        state = self._read(source)
+        if not state or state.get("finished", False):
+            raise PilotConflict("No active pilot")
+        if (
+            state["status"] != "PASS"
+            or state.get("decision") != "ACCEPT"
+            or not state.get("exported", False)
+        ):
+            raise PilotConflict("An exported accepted PASS result is required before finish")
+        self._check(state, pilot_hash=state["pilot_hash"])
+        state["finished"] = True
+        state["finished_at"] = datetime.now(timezone.utc).isoformat()
+        self._write(state)
+        return state
 
     def reset(self, relative: str):
         source = self._resolve_source(relative)

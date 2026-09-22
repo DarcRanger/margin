@@ -232,6 +232,11 @@ def export_pilot(req: PilotSourceRequest):
     return _pilot_call("export", req.source_path)
 
 
+@router.post("/pilot/finish")
+def finish_pilot(req: PilotSourceRequest):
+    return _pilot_call("finish", req.source_path)
+
+
 @router.get("/styles")
 def get_styles():
     try:
