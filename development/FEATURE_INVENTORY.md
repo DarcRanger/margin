@@ -101,9 +101,9 @@ directory with the clone or rebuild the feature from memory.
 | `margin-test.bat` | `WORKING` | Passed 6/6 on Joe's Windows laptop on 2026-09-21. |
 | `margin-test.ps1` | `PARTIAL` | Same Python gate wrapper; not separately invoked on Windows. |
 | CI on Windows/macOS/Linux | `WORKING` | Fail-closed workflow and the same six checks pass in the development baseline. |
-| `start.bat` → `start.ps1` | `PARTIAL` | Windows npm launcher fix is present and the installed app launches; a fresh-clone launch/quit acceptance is still required. |
+| `start.bat` → `start.ps1` | `WORKING` | Windows startup is covered by a disposable CI acceptance that verifies the API and UI respond before shutdown. |
 | `start.sh` | `PARTIAL` | Present and executable; no current hands-on macOS/Linux launch acceptance. |
-| Clean shutdown | `PARTIAL` | PowerShell and shell launchers attempt paired-process cleanup; no Windows close/kill/relaunch test. |
+| Clean shutdown | `WORKING` on Windows | CI requests a graceful stop, verifies complete Python/Node process-tree cleanup, then relaunches on the same ports. macOS/Linux launcher acceptance remains unverified. |
 
 ## Ordered Margin Functional Complete backlog
 

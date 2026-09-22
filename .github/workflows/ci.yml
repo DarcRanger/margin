@@ -116,6 +116,29 @@ jobs:
       - name: Run isolated browser acceptance
         run: npm run test:browser --prefix ui
 
+  # ── Windows launcher lifecycle ───────────────────────────────────────────
+  windows-launch:
+    name: "Windows launch, quit, and relaunch"
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Verify fresh start, clean quit, and relaunch
+        shell: powershell
+        run: .\scripts\test_windows_launch.ps1
+
   # ── Path-safety unit tests ────────────────────────────────────────────────
   # Lightweight cross-platform sanity check for the path-handling helpers.
   path-safety:

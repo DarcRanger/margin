@@ -27,6 +27,8 @@
 - [x] Create the five-check
       [Windows Pilot manual-acceptance checklist](PILOT_WINDOWS_ACCEPTANCE.md)
       using only a disposable workspace.
+- [x] Add a Windows CI gate for fresh start, API/UI availability, complete
+      process-tree shutdown, no orphan listeners, and immediate relaunch.
 
 ## Next
 
