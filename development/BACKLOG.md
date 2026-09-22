@@ -24,10 +24,12 @@
       bytes, and byte-preserved source protection in an isolated temporary
       workspace. Real Chromium execution passed in CI on Windows, macOS, and
       Linux on 2026-09-22.
+- [x] Create the five-check
+      [Windows Pilot manual-acceptance checklist](PILOT_WINDOWS_ACCEPTANCE.md)
+      using only a disposable workspace.
 
 ## Next
 
-- [ ] Create the minimal Windows manual-acceptance checklist.
 - [ ] Work through the approved functional-completeness backlog one item at a
       time with Builder/Verifier repair loops.
 
