@@ -62,6 +62,25 @@ class TestResumeArgv(unittest.TestCase):
             "-s", "workspace-write", "--", "-",
         ])
 
+    def test_codex_chat_is_read_only(self):
+        argv = assist._resolve_harness_argv(
+            "codex", "explain it", "/tmp/w", mode="chat")
+        self.assertTrue(_subseq(argv, ["-s", "read-only"]))
+        self.assertNotIn("workspace-write", argv)
+
+    def test_provider_chat_modes_do_not_auto_approve_edits(self):
+        opencode = assist._resolve_harness_argv(
+            "opencode", "explain", "/tmp/w", mode="chat")
+        claude = assist._resolve_harness_argv(
+            "claude-code", "explain", "/tmp/w", mode="chat")
+        agy = assist._resolve_harness_argv(
+            "agy", "explain", "/tmp/w", mode="chat")
+        self.assertNotIn("--auto", opencode)
+        self.assertTrue(_subseq(claude, ["--permission-mode", "plan"]))
+        self.assertNotIn("acceptEdits", claude)
+        self.assertTrue(_subseq(agy, ["--mode", "plan"]))
+        self.assertNotIn("--dangerously-skip-permissions", agy)
+
     def test_agy_resume_flag_before_print(self):
         argv = assist._resolve_harness_argv(
             "agy", "do it", "/tmp/w", mode="edit", resume_id="cid-1")
@@ -204,6 +223,43 @@ class TestRunOutcome(unittest.TestCase):
     def test_clean_run_succeeds(self):
         self.assertTrue(assist._harness_run_ok(False, False))
         self.assertTrue(assist._harness_run_ok(False, True))
+
+
+class TestPlannerFallback(unittest.TestCase):
+
+    def test_invalid_shapes_fall_back_without_context(self):
+        fallback = {"context_needed": [], "refined_query": "revise this"}
+        self.assertEqual(assist._normalize_planner_plan(None, "revise this"), fallback)
+        self.assertEqual(assist._normalize_planner_plan([], "revise this"), fallback)
+        self.assertEqual(
+            assist._normalize_planner_plan(
+                {"context_needed": "chapters/a.md", "refined_query": 42},
+                "revise this",
+            ),
+            fallback,
+        )
+
+    def test_valid_plan_filters_non_string_context_entries(self):
+        self.assertEqual(
+            assist._normalize_planner_plan(
+                {"context_needed": ["chapters/a.md", None], "refined_query": "tighten"},
+                "revise this",
+            ),
+            {"context_needed": ["chapters/a.md"], "refined_query": "tighten"},
+        )
+
+
+class TestStopEndpoint(unittest.TestCase):
+
+    def test_stop_signals_active_turn_and_unknown_session_is_safe(self):
+        event = assist.threading.Event()
+        assist._active_stop_events["turn-1"] = event
+        try:
+            self.assertEqual(assist.stop_simple_generation("turn-1"), {"status": "ok"})
+            self.assertTrue(event.is_set())
+            self.assertEqual(assist.stop_simple_generation("missing"), {"status": "ok"})
+        finally:
+            assist._active_stop_events.pop("turn-1", None)
 
 
 class TestHarnessSessionMap(unittest.TestCase):

@@ -46,9 +46,10 @@ def _resolve_harness_argv(harness_id: str, prompt: str, cwd: str, mode: str = "e
             f"{desc['name']} not found — install it or set a custom path in Settings > Harnesses"
         )
     argv = [exe]
+    extra_args = (desc.get("mode_extra_args") or {}).get(mode, desc.get("extra_args") or [])
     codex_resume = harness_id == "codex" and bool(resume_id)
     if codex_resume:
-        argv += [desc["workspace_flag"], cwd, *desc["extra_args"]]
+        argv += [desc["workspace_flag"], cwd, *extra_args]
     if desc.get("subcommand"):
         argv.append(desc["subcommand"])
     if resume_id:
@@ -73,8 +74,8 @@ def _resolve_harness_argv(harness_id: str, prompt: str, cwd: str, mode: str = "e
     # arg, so the prompt must always be last.
     if desc.get("workspace_flag") and not codex_resume:
         argv += [desc["workspace_flag"], cwd]
-    if desc.get("extra_args") and not codex_resume:
-        argv += list(desc["extra_args"])
+    if extra_args and not codex_resume:
+        argv += list(extra_args)
     if desc.get("prompt_flag"):
         argv += [desc["prompt_flag"], prompt]
     else:
@@ -837,14 +838,31 @@ def run_planner(
     )
     model_used = getattr(client, "last_model_used", client.model)
     
+    parsed = None
     try:
-        return json.loads(raw), system, user, raw, client.last_usage, model_used
+        parsed = json.loads(raw)
     except Exception:
         try:
             start, end = raw.find("{"), raw.rfind("}") + 1
-            return json.loads(raw[start:end]), system, user, raw, client.last_usage, model_used
+            parsed = json.loads(raw[start:end])
         except Exception:
-            return {"context_needed": [], "refined_query": message}, system, user, raw, client.last_usage, model_used
+            pass
+    return _normalize_planner_plan(parsed, message), system, user, raw, client.last_usage, model_used
+
+
+def _normalize_planner_plan(value: Any, message: str) -> dict:
+    """Return the small planner contract or a safe no-context fallback."""
+    if not isinstance(value, dict):
+        return {"context_needed": [], "refined_query": message}
+    context_needed = value.get("context_needed")
+    refined_query = value.get("refined_query")
+    if not isinstance(context_needed, list):
+        context_needed = []
+    else:
+        context_needed = [item for item in context_needed if isinstance(item, str)]
+    if not isinstance(refined_query, str) or not refined_query.strip():
+        refined_query = message
+    return {"context_needed": context_needed, "refined_query": refined_query}
 
 
 
@@ -974,6 +992,8 @@ async def simple_assist(payload: SimpleAssistRequest):
         raise HTTPException(status_code=400, detail="Missing message")
 
     mode = payload.mode.strip().lower()
+    if mode not in ("chat", "edit"):
+        raise HTTPException(status_code=400, detail="Mode must be 'chat' or 'edit'")
 
     async def event_generator():
         planner_system = None
@@ -1000,7 +1020,7 @@ async def simple_assist(payload: SimpleAssistRequest):
                         None,
                     )
                 pilot_state = None
-                if active_path:
+                if active_path and mode == "edit":
                     try:
                         pilot_service = PilotService(storage.workspace_dir)
                         pilot_state = pilot_service.active_pilot(active_path)
@@ -1017,7 +1037,11 @@ async def simple_assist(payload: SimpleAssistRequest):
                         try:
                             storage.update_input_file(active_path, payload.content)
                         except Exception as e:
-                            print(f"Harness pre-flush failed for {active_path}: {e}")
+                            yield {"data": json.dumps({
+                                "status": "error",
+                                "detail": f"Could not save the active file before the harness run: {e}",
+                            })}
+                            return
                 loop = asyncio.get_running_loop()
                 if mode == "edit":
                     # Harnesses plan and fetch context themselves: the endpoint
@@ -1194,7 +1218,7 @@ async def simple_assist(payload: SimpleAssistRequest):
                 # deliver (e.g. a denied tool aborted the turn): mark it so
                 # retries read as failures, not completions.
                 run_ok = _harness_run_ok(saw_error_text, did_write)
-                if harness_session_id and payload.session_id:
+                if run_ok and harness_session_id and payload.session_id:
                     storage.set_harness_session(
                         payload.session_id, payload.harness, harness_session_id
                     )
@@ -1222,6 +1246,13 @@ async def simple_assist(payload: SimpleAssistRequest):
                         tool_calls=tool_calls or None,
                     )
                 )
+                if not run_ok:
+                    if resume_id and payload.session_id:
+                        storage.clear_harness_session(payload.session_id, payload.harness)
+                    detail = full_harness_output.strip().splitlines()[-1] \
+                        if full_harness_output.strip() else "Harness reported an error and made no file changes"
+                    yield {"data": json.dumps({"status": "error", "detail": detail})}
+                    return
                 yield {"data": json.dumps({"status": "harness_done", "harness": payload.harness})}
                 return
 

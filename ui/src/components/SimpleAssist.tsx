@@ -853,6 +853,10 @@ export function SimpleAssist() {
                 setPendingEditSelection(null)
               })
               .catch((e) => setErrorText('Error: ' + (e as Error).message))
+          } else if (status === 'error') {
+            setIsPlanning(false)
+            setIsGenerating(false)
+            setErrorText('Error: ' + String(data.detail || 'AI request failed'))
           } else if (status === 'applied') {
             if (data.model_used) {
               useEditorStore.getState().setActiveModel(data.model_used as string)
@@ -1014,16 +1018,10 @@ export function SimpleAssist() {
           } else if (status === 'harness_done') {
             setIsPlanning(false)
             setIsGenerating(false)
-            scheduleFileRefresh(0)
-            applyHarnessResult(harnessBaseRef.current, harness)
-              .then(({ conflicts, deleted }) => {
-                if (deleted) {
-                  setNoticeText(`The open file was deleted by ${harnessLabel(harness)}.`)
-                } else if (conflicts > 0) {
-                  setNoticeText(`${conflicts} paragraph${conflicts > 1 ? 's were' : ' was'} changed by both you and ${harnessLabel(harness)} — kept your version.`)
-                }
-              })
-              .catch((e) => setErrorText('Error: ' + (e as Error).message))
+          } else if (status === 'error') {
+            setIsPlanning(false)
+            setIsGenerating(false)
+            setErrorText('Error: ' + String(data.detail || 'AI request failed'))
           }
         },
         abortRef.current.signal

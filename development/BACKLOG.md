@@ -32,12 +32,14 @@
 - [x] Complete isolated file-lifecycle coverage for create, list/read, save,
       rename, delete, failed-write preservation, path containment, and safe
       switching with pending edits.
+- [x] Complete AI/harness safety coverage for chat/edit permissions, stop and
+      retry behavior, provider and planner failures, diff decisions, session
+      resume, and no-write failure handling.
 
 ## Next
 
-- [ ] Complete AI/harness coverage for chat/edit permissions, stop/retry,
-      provider and planner failures, diff review, resume, and no-write failure
-      handling.
+- [ ] Triage current build warnings and dependency-audit findings without
+      applying an unreviewed force upgrade.
 
 ## Later: Lore Control
 
