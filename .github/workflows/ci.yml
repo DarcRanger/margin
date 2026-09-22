@@ -30,7 +30,6 @@ jobs:
         run: |
           npm ci
           npm audit fix --package-lock-only
-          npm audit --audit-level=high
 
       - name: Upload remediated lockfile
         uses: actions/upload-artifact@v4
@@ -38,6 +37,10 @@ jobs:
           name: remediated-package-lock
           path: ui/package-lock.json
           if-no-files-found: error
+
+      - name: Verify remediated dependency audit
+        working-directory: ui
+        run: npm audit --audit-level=high
 
   # ── Backend ──────────────────────────────────────────────────────────────
   backend:
