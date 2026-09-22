@@ -11,37 +11,6 @@ on:
       - "stats/**"
 
 jobs:
-  # Temporary lockfile-only remediation artifact for the maintenance pass.
-  dependency-remediation:
-    name: "Dependency remediation preview"
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-          cache-dependency-path: ui/package-lock.json
-
-      - name: Generate non-breaking lockfile fixes
-        working-directory: ui
-        run: |
-          npm install --package-lock-only
-          npm audit fix --package-lock-only
-
-      - name: Upload remediated lockfile
-        uses: actions/upload-artifact@v4
-        with:
-          name: remediated-package-lock
-          path: ui/package-lock.json
-          if-no-files-found: error
-
-      - name: Verify remediated dependency audit
-        working-directory: ui
-        run: npm audit --audit-level=high
-
   # ── Backend ──────────────────────────────────────────────────────────────
   backend:
     name: "Backend (${{ matrix.os }})"

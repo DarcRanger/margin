@@ -35,11 +35,16 @@
 - [x] Complete AI/harness safety coverage for chat/edit permissions, stop and
       retry behavior, provider and planner failures, diff decisions, session
       resume, and no-write failure handling.
+- [x] Clear the ineffective dynamic-import and oversized-bundle build warnings,
+      add a warning-regression gate, and remediate the npm audit from 39
+      findings to zero without a force or major-version upgrade.
 
 ## Next
 
-- [ ] Triage current build warnings and dependency-audit findings without
-      applying an unreviewed force upgrade.
+- [ ] Run the three-chapter protected pilot and freeze the functional-complete
+      baseline. Joe retains KEEP/FIX/REWRITE and manuscript approval authority.
+- [ ] Add selectable chapter audits with evidence-linked findings, bounded
+      context packets, finding-resolution history, and regression checks.
 
 ## Later: Lore Control
 

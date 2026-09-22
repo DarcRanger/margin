@@ -8,7 +8,7 @@ Milestone: Margin Development Harness v1
 
 - `WORKING`: Margin launches on the user's Windows machine.
 - `WORKING`: More than one chapter has completed the protected pilot workflow.
-- `WORKING`: The full quality gate passes: 77 backend tests plus 2 subtests,
+- `WORKING`: The full quality gate passes: 79 backend tests plus 2 subtests,
   7 frontend unit tests, backend imports, frontend build, and zero-warning lint.
 - `WORKING`: Cross-platform GitHub Actions are fail-closed on Windows, macOS,
   and Linux and explicitly install development/test dependencies.
@@ -24,6 +24,12 @@ Milestone: Margin Development Harness v1
 - `WORKING`: Windows hands-on acceptance passed 6/6 from an isolated clone on
   Joe's Windows laptop; the live Margin installation and linked writing data
   were not selected for the test.
+- `WORKING`: The production frontend build has no ineffective-import or
+  oversized-chunk warnings; the quality gate rejects either warning if it
+  returns.
+- `WORKING`: The live npm audit reports zero vulnerabilities after non-forced,
+  same-major dependency remediation. CI now fails on future high-severity
+  findings.
 
 ## Completed task
 
@@ -55,9 +61,9 @@ Automated verification: `PASS` (7/7 checks).
 
 ## Active task
 
-Triage the recorded build warnings and dependency-audit findings without an
-unreviewed force upgrade. Then run the three-chapter protected pilot and freeze
-the functional-complete baseline before beginning Lore Control.
+Run the three-chapter protected pilot and freeze the functional-complete
+baseline. Then begin the approved selectable chapter-audit feature before Lore
+Control.
 
 External GitHub and Reddit candidates are classified in
 `development/EXTERNAL_IDEA_REVIEW.md`. External product ideas remain gated until
