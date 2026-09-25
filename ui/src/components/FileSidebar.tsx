@@ -3,6 +3,7 @@ import { FolderPlus, FileText, Loader, Check, Plus, Trash2, Pencil } from 'lucid
 import { useEditorStore, type FileEntry } from '../stores/editorStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import { API_BASE } from '../lib/api'
+import { pilotBlocksNavigation } from '../lib/pilotControls'
 
 interface FolderNode {
   type: 'folder'
@@ -101,7 +102,7 @@ export function FileSidebar({
   aiPanelOpen,
   setAiPanelOpen,
 }: {
-  onSaveCurrentFile?: () => Promise<void>
+  onSaveCurrentFile?: () => Promise<boolean>
   filesPanelOpen?: boolean
   setFilesPanelOpen?: (open: boolean) => void
   aiPanelOpen?: boolean
@@ -216,6 +217,10 @@ export function FileSidebar({
 
   const handleFileClick = useCallback(async (path: string) => {
     const store = useEditorStore.getState()
+    if (pilotBlocksNavigation(store.pilot, path)) {
+      store.setPilotError('Pilot Mode is active. Export and finish the disposable pilot before opening another file.')
+      return
+    }
     if (store.aiPendingEdit && store.currentFilePath) {
       const previous = store.aiPendingEdit.previousContent
       store.editor?.commands.clearAiHighlight()
@@ -224,7 +229,8 @@ export function FileSidebar({
     }
 
     if (onSaveCurrentFile) {
-      await onSaveCurrentFile()
+      const saved = await onSaveCurrentFile()
+      if (!saved) return
     }
     const updatedStore = useEditorStore.getState()
     const { currentFilePath, content } = updatedStore

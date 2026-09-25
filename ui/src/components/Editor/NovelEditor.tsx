@@ -8,6 +8,10 @@ import { AiDiffHighlightExtension } from './AiDiffHighlightExtension'
 import { reapplyHarnessHighlight } from '../../lib/applyHarnessResult'
 import { EditorState } from '@tiptap/pm/state'
 
+interface MarkdownStorage {
+  markdown: { getMarkdown: () => string }
+}
+
 export function NovelEditor({ showInlinePopup = true }: { showInlinePopup?: boolean }) {
   const content = useEditorStore(state => state.content)
   const setContent = useEditorStore(state => state.setContent)
@@ -41,7 +45,7 @@ export function NovelEditor({ showInlinePopup = true }: { showInlinePopup?: bool
         editor.commands.clearAiHighlight()
         isProgrammaticUpdateRef.current = false
       }
-      const markdownStorage = (editor.storage as any).markdown as { getMarkdown: () => string }
+      const markdownStorage = (editor.storage as unknown as MarkdownStorage).markdown
       if (markdownStorage) {
         const newMarkdown = markdownStorage.getMarkdown()
         lastContentRef.current = newMarkdown

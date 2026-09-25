@@ -40,12 +40,8 @@ interface MarkdownStorage {
 
 
 function cleanUserPrompt(log: SimpleLogEntry): string {
-  let text = ''
-  if (log.instruction && log.instruction.trim()) {
-    text = log.instruction.trim()
-  } else {
-    text = log.mode === 'chat' ? 'AI Assistant Query' : 'Edit text'
-  }
+  let text = log.instruction?.trim()
+    || (log.mode === 'chat' ? 'AI Assistant Query' : 'Edit text')
 
   const hasAt = text.includes('@')
   if (!hasAt) {
@@ -466,7 +462,7 @@ export function SimpleAssist() {
 
   useEffect(() => {
     fetchSettings()
-  }, [])
+  }, [fetchSettings])
 
   useEffect(() => {
     if (settings?.default_mode) {
@@ -633,7 +629,7 @@ export function SimpleAssist() {
   )
 
 
-  const handleInput = () => {
+  const handleInput = useCallback(() => {
     const el = inputRef.current
     if (!el) return
 
@@ -658,7 +654,7 @@ export function SimpleAssist() {
     setFileQuery(query)
     setHighlightedIndex(0)
     setShowFileDropdown(true)
-  }
+  }, [pendingEditSelection, setPendingEditSelection])
 
   const handleSelectFile = useCallback((file: FileEntry) => {
     const div = inputRef.current
@@ -768,6 +764,7 @@ export function SimpleAssist() {
         ref_files: currentRefFiles.map(f => ({ name: f.name, path: f.path })),
         available_files: openedFiles.map(f => ({ name: f.name, path: f.path })),
         active_filename: activeFilename,
+        active_path: currentFilePath,
       }
 
       if (localHasSelection) {
@@ -856,6 +853,10 @@ export function SimpleAssist() {
                 setPendingEditSelection(null)
               })
               .catch((e) => setErrorText('Error: ' + (e as Error).message))
+          } else if (status === 'error') {
+            setIsPlanning(false)
+            setIsGenerating(false)
+            setErrorText('Error: ' + String(data.detail || 'AI request failed'))
           } else if (status === 'applied') {
             if (data.model_used) {
               useEditorStore.getState().setActiveModel(data.model_used as string)
@@ -1017,16 +1018,10 @@ export function SimpleAssist() {
           } else if (status === 'harness_done') {
             setIsPlanning(false)
             setIsGenerating(false)
-            scheduleFileRefresh(0)
-            applyHarnessResult(harnessBaseRef.current, harness)
-              .then(({ conflicts, deleted }) => {
-                if (deleted) {
-                  setNoticeText(`The open file was deleted by ${harnessLabel(harness)}.`)
-                } else if (conflicts > 0) {
-                  setNoticeText(`${conflicts} paragraph${conflicts > 1 ? 's were' : ' was'} changed by both you and ${harnessLabel(harness)} — kept your version.`)
-                }
-              })
-              .catch((e) => setErrorText('Error: ' + (e as Error).message))
+          } else if (status === 'error') {
+            setIsPlanning(false)
+            setIsGenerating(false)
+            setErrorText('Error: ' + String(data.detail || 'AI request failed'))
           }
         },
         abortRef.current.signal
@@ -1189,7 +1184,7 @@ export function SimpleAssist() {
         handleInput()
       }
     }
-  }, [pendingEditSelection])
+  }, [handleInput, pendingEditSelection])
 
   const hasHistory = filteredLogs.length > 0 || isWorking || !!errorText || !!noticeText
 
@@ -1505,7 +1500,7 @@ export function SimpleAssist() {
                       return data.context_needed
                     }
                   }
-                } catch (e) {
+                } catch {
                   // ignore
                 }
                 return []

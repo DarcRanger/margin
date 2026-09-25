@@ -1,6 +1,7 @@
 import { API_BASE } from './api'
 import { useEditorStore } from '../stores/editorStore'
 import type { Editor } from '@tiptap/core'
+import { sourceForHarnessReview } from './harnessSourcePatch'
 
 // ─── Paragraph three-way merge ───────────────────────────────────────────────
 // v1 scope: paragraph-oriented (blank-line separated), exact-match identity.
@@ -179,16 +180,24 @@ export async function applyHarnessResult(baseContent: string, harness: string): 
   }
   if (!res.ok) throw new Error(`Failed to reload ${deletedPath}: ${res.status}`)
   const { content: aiContent } = await res.json()
+  const rawContent = s.openedFiles.find(file => file.path === deletedPath)?.originalContent
+  if (rawContent === undefined) throw new Error('Raw source is unavailable; refusing to rewrite the file')
+  if (s.content !== baseContent) {
+    throw new Error('Document changed during the harness run; refusing to overwrite newer edits')
+  }
 
   const base = splitParas(baseContent)
   const ai = splitParas(aiContent)
   const current = splitParas(s.content)
   const { merged, conflicts, aiChangedIdx } = threeWayMerge(base, ai, current)
 
-  setEditorContent(merged.join('\n\n'))
+  const previewContent = merged.join('\n\n')
+  setEditorContent(previewContent)
   useEditorStore.getState().setAiPendingEdit({
     previousContent: baseContent,
     aiContent,
+    rawContent,
+    previewContent: useEditorStore.getState().content,
     harness,
     // Merged indices owned by AI-only changes. Reject drops exactly these.
     // (Attribution can't be recomputed later: once AI text is in `current`,
@@ -209,19 +218,39 @@ export async function resolveHarnessReview(accept: boolean): Promise<boolean> {
   const pending = s.aiPendingEdit
   if (!pending?.harness || !s.currentFilePath) return false
 
-  if (accept) {
-    // Merged doc (AI + preserved user edits) is already in the editor;
-    // persist it since disk still holds the AI-only version.
-    await putFileContent(s.currentFilePath, s.content)
-  } else {
-    // Reject = remove AI changes, keep user changes.
-    // Drop the merged indices recorded as AI-owned at apply time.
-    const dropped = new Set(pending.aiChangedIdx || [])
-    const current = splitParas(s.content)
-    const rejected = current.filter((_, i) => !dropped.has(i)).join('\n\n')
-    setEditorContent(rejected)
-    await putFileContent(s.currentFilePath, rejected)
+  if (pending.rawContent === undefined || pending.aiContent === undefined || pending.previewContent === undefined) {
+    throw new Error('Raw harness review source is unavailable; refusing to rewrite the file')
   }
+  if (s.content !== pending.previewContent) {
+    throw new Error('Document changed during harness review; refusing to overwrite newer edits')
+  }
+  let saved = sourceForHarnessReview(pending.rawContent, pending.aiContent, accept)
+  if (s.pilot && s.currentFilePath === s.pilot.pilot_path) {
+    const response = await fetch(`${API_BASE}/api/workspace/pilot/review`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        source_path: s.pilot.source_path,
+        accept,
+        changed: pending.aiContent,
+        expected_saved: saved,
+      }),
+    })
+    if (!response.ok) {
+      const detail = await response.json().catch(() => ({}))
+      const warning = detail.detail || `Pilot conflict (${response.status}); save refused`
+      s.setPilotError(warning)
+      s.setPilot({ ...s.pilot, status: 'FAIL' })
+      throw new Error(warning)
+    }
+    s.setPilot(await response.json())
+    const savedResponse = await fetch(`${API_BASE}/api/workspace/files/${encodeURIComponent(s.currentFilePath)}`)
+    if (!savedResponse.ok) throw new Error('Pilot saved, but reloading verification failed')
+    saved = (await savedResponse.json()).content
+  } else {
+    await putFileContent(s.currentFilePath, saved)
+  }
+  setEditorContent(saved)
   s.editor?.commands.clearAiHighlight()
   s.setAiPendingEdit(null)
   return true
