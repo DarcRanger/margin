@@ -21,6 +21,7 @@ class HarnessDescriptor(TypedDict, total=False):
     agent_flag: str
     mode_agents: dict
     extra_args: List[str]
+    mode_extra_args: dict
     # Resume: continue a previous conversation instead of starting cold.
     # Most CLIs take a flag (opencode --session, claude --resume,
     # agy --conversation); codex takes a subcommand (exec resume <id>).
@@ -58,7 +59,7 @@ HARNESS_DESCRIPTORS: Dict[str, HarnessDescriptor] = {
         # Non-interactive `run` auto-rejects every permission.asked event
         # (bash/edit) unless --auto is passed — stdin is DEVNULL so nothing
         # can ever be approved. Explicit deny rules still hold.
-        "extra_args": ["--auto"],
+        "mode_extra_args": {"chat": [], "edit": ["--auto"]},
         # Every `run --format json` event carries a top-level sessionID;
         # `run --session <id>` continues it with full context.
         "resume_flag": "--session",
@@ -83,7 +84,10 @@ HARNESS_DESCRIPTORS: Dict[str, HarnessDescriptor] = {
         "format_args": ["--output-format", "stream-json", "--verbose"],
         # Headless default permission mode denies Edit/Write outright;
         # acceptEdits auto-approves file edits under the run cwd.
-        "extra_args": ["--permission-mode", "acceptEdits"],
+        "mode_extra_args": {
+            "chat": ["--permission-mode", "plan"],
+            "edit": ["--permission-mode", "acceptEdits"],
+        },
         # session_id arrives in init + result frames; -p --resume <id>
         # continues with full history including tool calls/results.
         "resume_flag": "--resume",
@@ -110,7 +114,10 @@ HARNESS_DESCRIPTORS: Dict[str, HarnessDescriptor] = {
         "format_args": ["--json"],
         # exec's default sandbox is read-only; workspace-write is the
         # documented non-interactive mode that allows file edits.
-        "extra_args": ["-s", "workspace-write"],
+        "mode_extra_args": {
+            "chat": ["-s", "read-only"],
+            "edit": ["-s", "workspace-write"],
+        },
         # thread_id arrives in the thread.started event; exec resume <id>
         # reopens with full conversational context (reads, tools, reasoning).
         "resume_subcommand": "resume",
@@ -128,7 +135,10 @@ HARNESS_DESCRIPTORS: Dict[str, HarnessDescriptor] = {
         # fail or get parked in ~/.gemini/antigravity-cli/scratch. Verified:
         # skip-permissions + an ABSOLUTE --add-dir is what makes agy edit the
         # workspace in place (the router resolves the workspace to absolute).
-        "extra_args": ["--mode", "accept-edits", "--dangerously-skip-permissions"],
+        "mode_extra_args": {
+            "chat": ["--mode", "plan"],
+            "edit": ["--mode", "accept-edits", "--dangerously-skip-permissions"],
+        },
         # stream-json: step_update frames stream text deltas and tool steps;
         # the result frame carries usage. NOTE: --print takes a value, so all
         # flags must precede it (the argv builder does; a flag after --print

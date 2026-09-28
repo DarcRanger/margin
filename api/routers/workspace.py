@@ -5,6 +5,7 @@ import urllib.parse
 import sys
 import subprocess
 from api.services.file_storage import storage
+from api.services.pilot_mode import PilotConflict, PilotService, digest
 
 router = APIRouter(prefix="/api/workspace", tags=["workspace"])
 
@@ -21,6 +22,29 @@ class RenameFileRequest(BaseModel):
 
 class UpdateFileRequest(BaseModel):
     content: str
+
+
+class PilotSourceRequest(BaseModel):
+    source_path: str
+
+
+class PilotSaveRequest(PilotSourceRequest):
+    content: str
+    expected_pilot_hash: str
+
+
+class PilotReviewRequest(PilotSourceRequest):
+    accept: bool
+    changed: str
+    expected_saved: str
+
+
+def _pilot_call(method: str, source_path: str, **kwargs):
+    try:
+        service = PilotService(storage.workspace_dir)
+        return getattr(service, method)(source_path, **kwargs)
+    except PilotConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 # ---------------------------------------------------------------------------
@@ -164,6 +188,53 @@ def rename_input_file(path: str, req: RenameFileRequest):
         return storage.rename_input_file(decoded_path, req.name)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/pilot/start")
+def start_pilot(req: PilotSourceRequest):
+    return _pilot_call("start", req.source_path)
+
+
+@router.get("/pilot/status")
+def pilot_status(source_path: str):
+    return _pilot_call("status", source_path)
+
+
+@router.post("/pilot/reset")
+def reset_pilot(req: PilotSourceRequest):
+    return _pilot_call("reset", req.source_path)
+
+
+@router.post("/pilot/save")
+def save_pilot(req: PilotSaveRequest):
+    return _pilot_call(
+        "save_manual",
+        req.source_path,
+        changed=req.content,
+        expected_pilot_hash=req.expected_pilot_hash,
+    )
+
+
+@router.post("/pilot/review")
+def review_pilot(req: PilotReviewRequest):
+    return _pilot_call(
+        "review",
+        req.source_path,
+        accept=req.accept,
+        changed=req.changed,
+        expected_pilot_hash=digest(req.changed.encode("utf-8")),
+        expected_saved=req.expected_saved,
+    )
+
+
+@router.post("/pilot/export")
+def export_pilot(req: PilotSourceRequest):
+    return _pilot_call("export", req.source_path)
+
+
+@router.post("/pilot/finish")
+def finish_pilot(req: PilotSourceRequest):
+    return _pilot_call("finish", req.source_path)
 
 
 @router.get("/styles")

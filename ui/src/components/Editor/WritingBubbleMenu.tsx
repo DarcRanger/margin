@@ -221,6 +221,7 @@ export function WritingBubbleMenu() {
                     harness,
                     selected_text: selectedText,
                     skip_planner: true,
+                    active_path: useEditorStore.getState().currentFilePath,
                 },
                 (status, data) => {
                     if (status === 'chunk' && harness === 'none') outputText += data.chunk as string
