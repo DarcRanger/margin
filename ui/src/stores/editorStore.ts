@@ -8,6 +8,20 @@ export interface FileEntry {
   originalContent: string
 }
 
+export interface PilotState {
+  source: string
+  pilot: string
+  source_path: string
+  pilot_path: string
+  run: number
+  baseline: string
+  pilot_hash: string
+  status: 'NOT VERIFIED' | 'PASS' | 'FAIL'
+  decision?: 'ACCEPT' | 'REJECT' | null
+  verification?: 'MANUAL EDIT' | 'HARNESS REVIEW' | null
+  exported?: boolean
+}
+
 interface EditorState {
   content: string
   setContent: (content: string) => void
@@ -43,11 +57,15 @@ interface EditorState {
   loadFileContent: (path: string, content: string) => void
   clearFiles: () => void
   currentFilePath: string | null
+  pilot: PilotState | null
+  setPilot: (pilot: PilotState | null) => void
+  pilotError: string
+  setPilotError: (error: string) => void
   setCurrentFilePath: (path: string | null) => void
   updateFileContent: (path: string, content: string) => void
   markFileClean: (path: string) => void
-  aiPendingEdit: { previousContent: string; selectionRange?: { from: number; to: number } | null; highlightFrom?: number; harness?: string; aiContent?: string; aiChangedIdx?: number[] } | null
-  setAiPendingEdit: (edit: { previousContent: string; selectionRange?: { from: number; to: number } | null; highlightFrom?: number; harness?: string; aiContent?: string; aiChangedIdx?: number[] } | null) => void
+  aiPendingEdit: { previousContent: string; selectionRange?: { from: number; to: number } | null; highlightFrom?: number; harness?: string; aiContent?: string; aiChangedIdx?: number[]; rawContent?: string; previewContent?: string } | null
+  setAiPendingEdit: (edit: { previousContent: string; selectionRange?: { from: number; to: number } | null; highlightFrom?: number; harness?: string; aiContent?: string; aiChangedIdx?: number[]; rawContent?: string; previewContent?: string } | null) => void
   activeModel: string | null
   setActiveModel: (model: string | null) => void
 }
@@ -112,6 +130,10 @@ export const useEditorStore = create<EditorState>((set) => ({
       aiPendingEdit: null,
     }),
   currentFilePath: null,
+  pilot: null,
+  setPilot: (pilot) => set({ pilot }),
+  pilotError: '',
+  setPilotError: (pilotError) => set({ pilotError }),
   setCurrentFilePath: (currentFilePath) => set({ currentFilePath }),
   updateFileContent: (path, content) =>
     set((state) => ({

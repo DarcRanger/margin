@@ -363,7 +363,9 @@ function AppearanceSettings({ settings, updateSettings }: { settings: AppSetting
             <p className="text-[12px] text-[var(--text-secondary)] mb-3">Display word and/or character counts in the editor.</p>
             <select
               value={selectedStats}
-              onChange={(e) => updateSettings({ editor_stats: e.target.value as any })}
+              onChange={(e) => updateSettings({
+                editor_stats: e.target.value as NonNullable<AppSettings['editor_stats']>
+              })}
               className="border border-[var(--border-subtle)] rounded-[6px] px-3 py-2 text-[13px] bg-[var(--bg-input)] text-[var(--text)] outline-none focus:border-[var(--text-secondary)] transition-colors w-[200px]"
             >
               <option value="both">Words & Characters</option>
@@ -672,7 +674,7 @@ function EndpointsSettings({ settings, updateSettings }: { settings: AppSettings
   const handleAdd = () => {
     if (!newId || !newUrl) return
     const id = newId.trim().toLowerCase().replace(/\s+/g, '_')
-    let updatedEndpoints = {
+    const updatedEndpoints = {
       ...settings.endpoints,
       [id]: {
         url: newUrl,
@@ -1119,7 +1121,6 @@ function PromptsSettings() {
 
   useEffect(() => {
     // Reset + fetch on prompt switch; matches the data-fetch pattern used elsewhere here.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsLoading(true)
     setError('')
     fetch(`${API_BASE}/api/assist/prompts/${encodeURIComponent(entry.file)}`)

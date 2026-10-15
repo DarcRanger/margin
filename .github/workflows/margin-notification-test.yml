@@ -1,0 +1,30 @@
+name: Margin Notification Test
+
+on:
+  push:
+    branches:
+      - feat/development-supervisor-v1
+    paths:
+      - .github/workflows/margin-notification-test.yml
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  notify:
+    name: Send decision-required test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post notification as GitHub Actions bot
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ALERT_BODY: |-
+            @DarcRanger — **MARGIN BOT NOTIFICATION TEST**
+
+            This message was sent by `github-actions[bot]`, not by your own account.
+            Please confirm whether it appears in the GitHub Inbox and produces an iPhone or iPad push notification.
+
+            No code decision is required, and nothing will be merged automatically.
+        run: gh api --method POST "repos/${GITHUB_REPOSITORY}/issues/1/comments" -f "body=${ALERT_BODY}"

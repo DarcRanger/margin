@@ -15,4 +15,7 @@ settings.json
 .worktrees/
 worktrees/
 .venv/
+.margin-test/
 .opencode
+ui/playwright-report/
+ui/test-results/
